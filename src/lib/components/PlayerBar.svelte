@@ -21,6 +21,7 @@
 
   export function toggle() {
     playerState.isPlaying = !playerState.isPlaying
+    playerState.isPlaying ? resume_music() : pause_music()
   }
 </script>
 
@@ -57,8 +58,10 @@
         onkeydown={e => e.key === 'Enter' && prev()}
       ></mdui-button-icon>
       <mdui-button-icon
-        variant="filled" 
-        icon={playerState.isPlaying ? 'pause--rounded' : 'play_arrow--rounded'}
+        variant="filled"
+        icon={playerState.isPlaying
+          ? 'pause--rounded'
+          : 'play_arrow--rounded'}
         role="button"
         tabindex="0"
         onclick={toggle}
@@ -75,10 +78,13 @@
     </div>
 
     <div class="flex items-center min-w-37.5 justify-end">
-      <mdui-button-icon icon="volume_up--rounded" class="text-lg opacity-70">
+      <mdui-button-icon
+        icon="volume_up--rounded"
+        class="text-lg opacity-70"
+      >
       </mdui-button-icon>
       <!-- <Slider value="100" class="w-32" /> -->
-       <Progress value="100" class="w-32" />
+      <Progress value="100" class="w-32" />
     </div>
   </div>
 </mdui-bottom-app-bar>
