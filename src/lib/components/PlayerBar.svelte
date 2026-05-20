@@ -1,5 +1,6 @@
 <script>
   import { playerState } from '$lib/player.svelte'
+  import Progress from './Progress.svelte'
   import Slider from './Slider.svelte'
 
   async function switchTrack(step) {
@@ -76,7 +77,8 @@
     <div class="flex items-center min-w-37.5 justify-end">
       <mdui-button-icon icon="volume_up--rounded" class="text-lg opacity-70">
       </mdui-button-icon>
-      <Slider value="100" class="w-32" />
+      <!-- <Slider value="100" class="w-32" /> -->
+       <Progress value="100" class="w-32" />
     </div>
   </div>
 </mdui-bottom-app-bar>

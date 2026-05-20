@@ -1,6 +1,6 @@
 <script lang="ts">
-import { invoke } from '@tauri-apps/api/core'
-import 'mdui/components/button.js'
+  import { invoke } from '@tauri-apps/api/core'
+  import 'mdui/components/button.js'
 
   async function playMusic() {
     await invoke('play_music', {
