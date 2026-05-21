@@ -5,6 +5,9 @@
         width = 100,
         height = 12,
         thumbHeight = 18,
+        onmousedown,
+        onmouseover,
+        onmousemove,
     } = $props()
 
     let startMove = $state(false)
@@ -14,19 +17,32 @@
     let progressRaw = $derived(value / 100)
     let scale = $derived((width - 4) / width)
 
-    function mouseDown(ev) {
+    function mouseDown(e) {
         startMove = true
-        dx = ev.offsetX
-        let _value = clamp((ev.offsetX / inputEl.offsetWidth) * 100, 0, 100)
+        dx = e.offsetX
+        let _value = clamp((e.offsetX / inputEl.offsetWidth) * 100, 0, 100)
         value = _value
+        onmousedown?.(e)
     }
 
-    function mouseMove(ev) {
-        ev.stopPropagation()
+    function mouseMove(e) {
+        e.stopPropagation()
         if (!startMove) return
-        dx += ev.movementX
+        dx += e.movementX
         let _value = clamp((dx / inputEl.offsetWidth) * 100, 0, 100)
         value = _value
+        onmousemove?.(e)
+    }
+    
+    function handleKeydown(e) {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowRight') {
+            e.preventDefault()
+            value = clamp(value + 10, 0, 100)
+            console.log(value)
+        } else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') {
+            e.preventDefault()
+            value = clamp(value - 10, 0, 100)
+        }
     }
 
     $effect(() => {
@@ -59,6 +75,9 @@
     class="container"
     style="--width: {width}; --thumbHeight: {thumbHeight}; --scale: {scale}; {cssStyle}"
     onmousedown={mouseDown}
+    {onmouseover}
+    onfocus={onmouseover}
+    onkeydown={handleKeydown}
     role="slider"
     aria-valuemin={0}
     aria-valuemax={100}

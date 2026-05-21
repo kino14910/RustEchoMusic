@@ -1,12 +1,18 @@
 <script>
-  let { value, classList } = $props()
-  import { onMount } from 'svelte'
+    let {
+        value = $bindable(0),
+        classList,
+        oninput,
+        onchange,
+        duration,
+    } = $props()
+    import { onMount } from 'svelte'
 
-  let sliderRef = $state(null)
+    let sliderRef = $state(null)
 
-  const size = 1.5
+    const size = 1.5
 
-  const styleText = `
+    const styleText = `
           .handle .elevation,
           .handle::before {
             position: absolute;
@@ -25,30 +31,37 @@
           }
           `
 
-  function updateSliderStyle(elem) {
-    const shadow = elem?.shadowRoot
-    if (shadow) {
-      const childNodes = Array.from(shadow.childNodes)
+    function updateSliderStyle(elem) {
+        const shadow = elem?.shadowRoot
+        if (shadow) {
+            const childNodes = Array.from(shadow.childNodes)
 
-      childNodes.forEach(childNode => {
-        if (childNode.nodeName === 'STYLE') {
-          console.log(childNode.textContent)
-          childNode.textContent += styleText
+            childNodes.forEach(childNode => {
+                if (childNode.nodeName === 'STYLE') {
+                    console.log(childNode.textContent)
+                    childNode.textContent += styleText
+                }
+            })
+
+            if (!childNodes.some(node => node.nodeName === 'STYLE')) {
+                const style = document.createElement('style')
+                style.textContent = styleText
+                shadow.appendChild(style)
+            }
         }
-      })
-
-      if (!childNodes.some(node => node.nodeName === 'STYLE')) {
-        const style = document.createElement('style')
-        style.textContent = styleText
-        shadow.appendChild(style)
-      }
     }
-  }
 
-  onMount(() => {
-    updateSliderStyle(sliderRef)
-  })
+    onMount(() => {
+        updateSliderStyle(sliderRef)
+    })
 </script>
 
-<mdui-slider nolabel value class={classList} bind:this={sliderRef}
+<mdui-slider
+    nolabel
+    max={duration}
+    {value}
+    class={classList}
+    {oninput}
+    {onchange}
+    bind:this={sliderRef}
 ></mdui-slider>

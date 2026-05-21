@@ -3,6 +3,10 @@ type PlayerState = {
   isPlaying: boolean
   playlist: Track[]
   progress: number
+  duration: number
+  volume: number
+  isMuted: boolean
+  previousVolume: number
 }
 
 type Track = {
@@ -16,4 +20,18 @@ export const playerState = $state<PlayerState>({
   isPlaying: false,
   playlist: [],
   progress: 0,
+  duration: 0,
+  volume: 0.8,
+  isMuted: false,
+  previousVolume: 0.8,
 })
+
+export interface SongInfo {
+  title: string;
+  artist: string;
+  album: string;
+  duration: number;
+  sample_rate?: number;
+  bit_depth?: number;
+  channels?: number;
+}
