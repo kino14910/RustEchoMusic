@@ -9,7 +9,8 @@ pub fn run() {
             commands::toggle_music,
             commands::current_time,
             commands::set_current_time,
-            commands::get_song_info
+            commands::get_track_info,
+            commands::set_volume
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { playerState, type SongInfo } from '$lib/player.svelte'
+    import { playerState, type TrackInfo } from '$lib/player.svelte'
     import { invoke } from '@tauri-apps/api/core'
     import 'mdui/components/button.js'
 
@@ -7,16 +7,11 @@
         await invoke('play_music', {
             name: 'music/40mP 初音ミク - 恋愛裁判.flac',
         })
-
-        playerState.isPlaying = true
         
-        let song_info = await invoke<SongInfo>("get_song_info", {name: "music/40mP 初音ミク - 恋愛裁判.flac"})
-        playerState.current = {
-            title: song_info?.title,
-            artist: song_info?.artist,
-            path: "music/40mP 初音ミク - 恋愛裁判.flac"
-        }
-        playerState.duration = song_info.duration
+        const track = await invoke<TrackInfo>("get_track_info", {name: "music/40mP 初音ミク - 恋愛裁判.flac"})
+        playerState.current = track
+        playerState.playing = true
+        playerState.startPolling()
     }
 </script>
 
