@@ -1,4 +1,15 @@
-<script>
+<script lang="ts">
+    type SliderProps = {
+        value?: number
+        cssStyle?: string
+        width?: number
+        height?: number
+        thumbHeight?: number
+        onmousedown?: (event: MouseEvent) => void
+        onmouseover?: (event: MouseEvent | FocusEvent) => void
+        onmousemove?: (event: MouseEvent) => void
+    }
+
     let {
         value = $bindable(0),
         cssStyle = '',
@@ -8,37 +19,50 @@
         onmousedown,
         onmouseover,
         onmousemove,
-    } = $props()
+    }: SliderProps = $props()
 
     let startMove = $state(false)
     let dx = 0
-    let inputEl
+    let inputEl: HTMLDivElement | null = null
 
     let progressRaw = $derived(value / 100)
     let scale = $derived((width - 4) / width)
 
-    function mouseDown(e) {
+    function clamp(val: number, min: number, max: number): number {
+        return Math.min(max, Math.max(min, val))
+    }
+
+    function getPercentFromOffset(offsetX: number): number {
+        if (!inputEl) return value
+
+        return clamp((offsetX / inputEl.offsetWidth) * 100, 0, 100)
+    }
+
+    function mouseDown(e: MouseEvent): void {
+        if (!inputEl) return
+
         startMove = true
         dx = e.offsetX
-        let _value = clamp((e.offsetX / inputEl.offsetWidth) * 100, 0, 100)
-        value = _value
+        value = getPercentFromOffset(e.offsetX)
+
         onmousedown?.(e)
     }
 
-    function mouseMove(e) {
+    function mouseMove(e: MouseEvent): void {
         e.stopPropagation()
-        if (!startMove) return
+
+        if (!startMove || !inputEl) return
+
         dx += e.movementX
-        let _value = clamp((dx / inputEl.offsetWidth) * 100, 0, 100)
-        value = _value
+        value = clamp((dx / inputEl.offsetWidth) * 100, 0, 100)
+
         onmousemove?.(e)
     }
-    
-    function handleKeydown(e) {
+
+    function handleKeydown(e: KeyboardEvent): void {
         if (e.key === 'ArrowUp' || e.key === 'ArrowRight') {
             e.preventDefault()
             value = clamp(value + 10, 0, 100)
-            console.log(value)
         } else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') {
             e.preventDefault()
             value = clamp(value - 10, 0, 100)
@@ -46,28 +70,28 @@
     }
 
     $effect(() => {
-        if (startMove) {
-            const onGlobalMouseUp = () => {
-                startMove = false
-                dx = 0
-            }
+        if (!startMove) return
 
-            document.addEventListener('mousemove', mouseMove, {
-                passive: true,
-                capture: true,
+        const onGlobalMouseUp = (): void => {
+            startMove = false
+            dx = 0
+        }
+
+        document.addEventListener('mousemove', mouseMove, {
+            passive: true,
+            capture: true
+        })
+
+        document.addEventListener('mouseup', onGlobalMouseUp)
+
+        return () => {
+            document.removeEventListener('mousemove', mouseMove, {
+                capture: true
             })
-            document.addEventListener('mouseup', onGlobalMouseUp)
 
-            return () => {
-                document.removeEventListener('mousemove', mouseMove)
-                document.removeEventListener('mouseup', onGlobalMouseUp)
-            }
+            document.removeEventListener('mouseup', onGlobalMouseUp)
         }
     })
-
-    function clamp(val, min, max) {
-        return Math.min(max, Math.max(min, val))
-    }
 </script>
 
 <div
