@@ -158,3 +158,63 @@
         {/each}
     </div>
 </mdui-list>
+
+<style>
+    @keyframes bounce {
+        from {
+            height: 4px;
+        }
+        to {
+            height: 14px;
+        }
+    }
+
+    .themed-text-primary {
+        color: rgb(var(--mdui-color-on-surface));
+    }
+
+    .themed-text-secondary {
+        color: rgb(var(--mdui-color-on-surface-variant));
+    }
+
+    .themed-text-accent {
+        color: rgb(var(--mdui-color-primary));
+    }
+
+    .themed-border {
+        border-color: rgb(var(--mdui-color-outline-variant));
+    }
+
+    .themed-border-b {
+        border-bottom: 1px solid rgb(var(--mdui-color-outline-variant));
+    }
+
+    .themed-surface-container {
+        background-color: rgb(var(--mdui-color-surface-container-highest));
+    }
+
+    .themed-surface-high {
+        background-color: rgb(var(--mdui-color-surface-container-high));
+    }
+
+    .themed-bar {
+        background-color: rgb(var(--mdui-color-primary));
+    }
+
+    .themed-item {
+        background-color: transparent;
+        border: 1px solid transparent;
+    }
+
+    .themed-item:hover {
+        background-color: rgb(var(--mdui-color-surface-container));
+        box-shadow:
+            0 4px 6px -1px rgba(0, 0, 0, 0.1),
+            0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .themed-item-active {
+        background-color: rgb(var(--mdui-color-surface-container));
+        border-color: rgb(var(--mdui-color-outline-variant));
+    }
+</style>
