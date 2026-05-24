@@ -1,14 +1,14 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { TrackInfo } from './player.svelte'
+import type { Track } from '../types/types'
 
 class MusicLibrary {
-    tracks = $state<TrackInfo[]>([])
+    tracks = $state<Track[]>([])
     isLoading = $state(false)
     error = $state<string | null>(null)
 
-    private refreshPromise: Promise<TrackInfo[]> | null = null
+    private refreshPromise: Promise<Track[]> | null = null
 
-    async refresh(options: { force?: boolean } = {}): Promise<TrackInfo[]> {
+    async refresh(options: { force?: boolean } = {}): Promise<Track[]> {
         const { force = false } = options
 
         if (this.refreshPromise) {
@@ -24,13 +24,7 @@ class MusicLibrary {
 
         this.refreshPromise = (async () => {
             try {
-                console.trace('[MusicLibrary] refresh called')
-                console.log('[MusicLibrary] invoke load_music_library start')
-
-                const tracks = await invoke<TrackInfo[]>('load_music_library')
-
-                console.log('[MusicLibrary] invoke load_music_library end', tracks.length)
-
+                const tracks = await invoke<Track[]>('load_music_library')
                 this.tracks = tracks
                 return tracks
             } catch (err) {

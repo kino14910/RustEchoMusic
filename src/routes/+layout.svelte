@@ -1,7 +1,7 @@
 <script lang="ts">
-  import Appbar from '$lib/components/Appbar.svelte'
-  import NavRail from '$lib/components/NavRail.svelte'
-  import PlayerBar from '$lib/components/PlayerBar.svelte'
+  import PlayerBar from '$lib/features/PlayerBar.svelte'
+  import Appbar from '$lib/features/shell/Appbar.svelte'
+  import NavRail from '$lib/features/shell/NavRail.svelte'
   import 'mdui'
   import 'mdui/mdui.css'
   import '../app.css'

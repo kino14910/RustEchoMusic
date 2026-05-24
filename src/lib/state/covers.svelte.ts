@@ -1,5 +1,6 @@
-import type { TrackInfo } from '$lib/player.svelte'
+
 import { invoke } from '@tauri-apps/api/core'
+import type { Track } from '../types/types'
 
 class TrackCovers {
     covers = $state<Record<string, string | null>>({})
@@ -7,7 +8,7 @@ class TrackCovers {
 
     private promises = new Map<string, Promise<string | null>>()
 
-    async load(track: TrackInfo | null | undefined): Promise<string | null> {
+    async load(track: Track | null | undefined): Promise<string | null> {
         if (!track?.path) return null
 
         if (this.covers[track.path] !== undefined) {
@@ -42,7 +43,7 @@ class TrackCovers {
         return await promise
     }
 
-    get(track: TrackInfo | null | undefined): string | null {
+    get(track: Track | null | undefined): string | null {
         if (!track?.path) return null
         return this.covers[track.path] ?? null
     }

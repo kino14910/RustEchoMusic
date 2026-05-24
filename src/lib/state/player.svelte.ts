@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core"
+import type { Track } from "../types/types"
 import { recentlyPlayed } from "./recent.svelte"
 
 
@@ -9,7 +10,7 @@ class Player {
     currentTime = $state(0)
     muted = $state(false)
 
-    currentTrack = $derived<TrackInfo | null>(
+    currentTrack = $derived<Track | null>(
         this.currentIndex >= 0 && this.currentIndex < this.playlist.length
             ? this.playlist[this.currentIndex]
             : null
@@ -88,23 +89,14 @@ class Player {
     switchTrack = async (step: number) => {
         const len = this.playlist.length
         if (len === 0) return
-
+        
+        this.stopPolling()
         const newIndex = (this.currentIndex + step + len) % len
         this.playByIndex(newIndex)
     }
 
     next = () => this.switchTrack(1)
     prev = () => this.switchTrack(-1)
-}
-
-export interface TrackInfo {
-    title: string
-    artist: string
-    album: string
-    duration: number
-    sample_rate?: number | null
-    cover?: string | null
-    path: string
 }
 
 export const player = new Player()

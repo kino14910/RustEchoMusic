@@ -1,6 +1,5 @@
 <script lang="ts">
-  import Playlists from "$lib/components/Playlists.svelte"
-  import RecentSongs from "$lib/components/RecentSongs.svelte"
+  import Playlists from "$lib/features/PlaylistGrid.svelte"
 
   const playlists = [
     {
@@ -67,7 +66,6 @@
 
 <div class="overflow-y-auto p-8">
   <Playlists {playlists} />
-  <RecentSongs songs={recentSongs} />
 </div>
 
 <style lang="postcss">

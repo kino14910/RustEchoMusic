@@ -1,14 +1,15 @@
-import type { TrackInfo } from '$lib/player.svelte'
+
 import { invoke } from '@tauri-apps/api/core'
+import type { Track } from '../types/types'
 
 class RecentlyPlayed {
-    tracks = $state<TrackInfo[]>([])
+    tracks = $state<Track[]>([])
     isLoading = $state(false)
     error = $state<string | null>(null)
 
-    private loadPromise: Promise<TrackInfo[]> | null = null
+    private loadPromise: Promise<Track[]> | null = null
 
-    async load(): Promise<TrackInfo[]> {
+    async load(): Promise<Track[]> {
         if (this.loadPromise) {
             return this.loadPromise
         }
@@ -16,7 +17,7 @@ class RecentlyPlayed {
         this.isLoading = true
         this.error = null
 
-        this.loadPromise = invoke<TrackInfo[]>('load_recently_played')
+        this.loadPromise = invoke<Track[]>('load_recently_played')
             .then((tracks) => {
                 this.tracks = tracks
                 return tracks
@@ -34,8 +35,8 @@ class RecentlyPlayed {
         return this.loadPromise
     }
 
-    async add(track: TrackInfo): Promise<TrackInfo[]> {
-        const safeTrack: TrackInfo = {
+    async add(track: Track): Promise<Track[]> {
+        const safeTrack: Track = {
             ...track,
             cover: null
         }
@@ -47,7 +48,7 @@ class RecentlyPlayed {
         ].slice(0, 100)
 
         try {
-            const tracks = await invoke<TrackInfo[]>('add_recently_played', {
+            const tracks = await invoke<Track[]>('add_recently_played', {
                 track: safeTrack
             })
 

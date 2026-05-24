@@ -39,7 +39,7 @@ fn get_audio_state() -> &'static Mutex<AudioState> {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct TrackInfo {
+pub struct Track {
     title: String,
     artist: String,
     album: String,
@@ -143,7 +143,7 @@ pub async fn set_volume(volume: u8) -> Result<(), String> {
     Ok(())
 }
 
-fn parse_single_track(file_path: &Path) -> Option<TrackInfo> {
+fn parse_single_track(file_path: &Path) -> Option<Track> {
     let tagged_file = Probe::open(file_path).ok()?.read().ok()?;
     let tag = tagged_file
         .primary_tag()
@@ -174,7 +174,7 @@ fn parse_single_track(file_path: &Path) -> Option<TrackInfo> {
     let duration = props.duration().as_secs_f64();
     let sample_rate = props.sample_rate();
 
-    Some(TrackInfo {
+    Some(Track {
         title,
         artist,
         album,
@@ -213,7 +213,7 @@ pub async fn get_track_cover(full_path: String) -> Result<Option<String>, String
 
 async fn scan_music_directory_logic(
     app_handle: &tauri::AppHandle,
-) -> Result<Vec<TrackInfo>, String> {
+) -> Result<Vec<Track>, String> {
     let music_dir = app_handle
         .path()
         .audio_dir()
@@ -225,7 +225,7 @@ async fn scan_music_directory_logic(
     Ok(tracks)
 }
 
-fn visit_dirs(dir: &Path, tracks: &mut Vec<TrackInfo>) {
+fn visit_dirs(dir: &Path, tracks: &mut Vec<Track>) {
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -254,7 +254,7 @@ static SUPPORTED_EXT: [&str; 4] = ["mp3", "flac", "m4a", "wav"];
 pub async fn scan_music_directory(
     app_handle: tauri::AppHandle,
     dir_path: String,
-) -> Result<Vec<TrackInfo>, String> {
+) -> Result<Vec<Track>, String> {
     let root_path = Path::new(&dir_path);
     if !root_path.is_dir() {
         return Err("Invalid directory path".into());
@@ -296,7 +296,7 @@ pub async fn scan_music_directory(
 }
 
 #[command]
-pub async fn load_music_library(app_handle: tauri::AppHandle) -> Result<Vec<TrackInfo>, String> {
+pub async fn load_music_library(app_handle: tauri::AppHandle) -> Result<Vec<Track>, String> {
     let app_data_path = app_handle
         .path()
         .app_data_dir()
@@ -314,7 +314,7 @@ pub async fn load_music_library(app_handle: tauri::AppHandle) -> Result<Vec<Trac
 
     let file = File::open(&json_file_path).map_err(|e| format!("无法打开库文件: {}", e))?;
 
-    match serde_json::from_reader::<_, Vec<TrackInfo>>(file) {
+    match serde_json::from_reader::<_, Vec<Track>>(file) {
         Ok(mut library) => {
             let had_covers = library.iter().any(|track| track.cover.is_some());
 
@@ -336,7 +336,7 @@ pub async fn load_music_library(app_handle: tauri::AppHandle) -> Result<Vec<Trac
     }
 }
 
-async fn rebuild_and_get_library(app_handle: &tauri::AppHandle) -> Result<Vec<TrackInfo>, String> {
+async fn rebuild_and_get_library(app_handle: &tauri::AppHandle) -> Result<Vec<Track>, String> {
     let fresh_library = scan_music_directory_logic(app_handle).await?;
 
     save_music_library(app_handle, &fresh_library)?;
@@ -346,7 +346,7 @@ async fn rebuild_and_get_library(app_handle: &tauri::AppHandle) -> Result<Vec<Tr
 
 pub fn save_music_library(
     app_handle: &tauri::AppHandle,
-    library: &Vec<TrackInfo>,
+    library: &Vec<Track>,
 ) -> Result<(), String> {
     let app_data_path = app_handle
         .path()
@@ -377,7 +377,7 @@ fn recently_played_path(app_handle: &tauri::AppHandle) -> Result<std::path::Path
     Ok(app_data_path.join(RECENTLY_PLAYED_FILE))
 }
 
-fn read_recently_played(app_handle: &tauri::AppHandle) -> Result<Vec<TrackInfo>, String> {
+fn read_recently_played(app_handle: &tauri::AppHandle) -> Result<Vec<Track>, String> {
     let file_path = recently_played_path(app_handle)?;
 
     if !file_path.exists() {
@@ -386,11 +386,11 @@ fn read_recently_played(app_handle: &tauri::AppHandle) -> Result<Vec<TrackInfo>,
 
     let file = File::open(&file_path).map_err(|e| format!("无法打开最近播放文件: {}", e))?;
 
-    serde_json::from_reader::<_, Vec<TrackInfo>>(file)
+    serde_json::from_reader::<_, Vec<Track>>(file)
         .map_err(|e| format!("无法解析最近播放文件: {}", e))
 }
 
-fn save_recently_played(app_handle: &tauri::AppHandle, tracks: &[TrackInfo]) -> Result<(), String> {
+fn save_recently_played(app_handle: &tauri::AppHandle, tracks: &[Track]) -> Result<(), String> {
     let file_path = recently_played_path(app_handle)?;
     let temp_file_path = file_path.with_extension("json.tmp");
 
@@ -406,15 +406,15 @@ fn save_recently_played(app_handle: &tauri::AppHandle, tracks: &[TrackInfo]) -> 
 }
 
 #[command]
-pub async fn load_recently_played(app_handle: tauri::AppHandle) -> Result<Vec<TrackInfo>, String> {
+pub async fn load_recently_played(app_handle: tauri::AppHandle) -> Result<Vec<Track>, String> {
     read_recently_played(&app_handle)
 }
 
 #[command]
 pub async fn add_recently_played(
     app_handle: tauri::AppHandle,
-    track: TrackInfo,
-) -> Result<Vec<TrackInfo>, String> {
+    track: Track,
+) -> Result<Vec<Track>, String> {
     let mut list = read_recently_played(&app_handle).unwrap_or_default();
 
     let mut track = track;

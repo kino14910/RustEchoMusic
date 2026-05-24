@@ -1,8 +1,9 @@
 <script lang="ts">
-    import TrackList from '$lib/components/TrackList.svelte'
-    import { recentlyPlayed } from '$lib/recent.svelte'
+    import TrackList from '$lib/features/TrackList.svelte'
+    import { recentlyPlayed } from '$lib/state/recent.svelte'
     import { onMount } from 'svelte'
 
+    import Button from '$lib/components/base/Button.svelte'
     import 'mdui/components/button.js'
     import 'mdui/components/circular-progress.js'
 
@@ -16,26 +17,25 @@
 </svelte:head>
 
 <section class="w-full min-h-full overflow-y-auto">
-    <header class="flex items-end justify-between gap-4 shrink-0 pb-3 border-b themed-border">
+    <header
+        class="flex items-end justify-between gap-4 shrink-0 pb-3 border-b themed-border"
+    >
         <div class="min-w-0">
-            <h1 class="text-2xl font-bold themed-text-primary">最近播放</h1>
+            <p
+                class="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--mdui-color-primary))]"
+            >
+                Recent
+            </p>
+            <h1 class="mt-1 text-3xl font-bold tracking-tight text-[rgb(var(--mdui-color-on-surface))]">最近播放</h1>
             <p class="text-sm themed-text-secondary mt-1">
                 这里会显示你最近播放过的歌曲
             </p>
         </div>
 
         {#if recentlyPlayed.tracks.length > 0}
-            <mdui-button
-                variant="outlined"
-                onclick={() => recentlyPlayed.clear()}
-                onkeydown={(e: KeyboardEvent) => {
-                    if (e.key === 'Enter' || e.key === ' ') recentlyPlayed.clear()
-                }}
-                role="button"
-                tabindex="0"
-            >
+            <Button variant="outlined" onclick={() => recentlyPlayed.clear()}>
                 清空
-            </mdui-button>
+            </Button>
         {/if}
     </header>
 

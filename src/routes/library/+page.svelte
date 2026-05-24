@@ -1,61 +1,129 @@
 <script lang="ts">
-    import TrackList from '$lib/components/TrackList.svelte'
-    import { musicLibrary } from '$lib/library.svelte'
-    import { player } from '$lib/player.svelte'
-    import 'mdui/components/list-item.js'
-    import 'mdui/components/list-subheader.js'
-    import 'mdui/components/list.js'
-    import 'mdui/components/ripple.js'
+    import TrackList from '$lib/features/TrackList.svelte'
+    import { musicLibrary } from '$lib/state/library.svelte'
+    import { player } from '$lib/state/player.svelte'
+    import type { Track } from '$lib/types'
     import { onMount } from 'svelte'
 
-    let didInit = false
+    import Button from '$lib/components/base/Button.svelte'
+    import Filters from '$lib/features/Filters.svelte'
+    import 'mdui/components/button.js'
+    import 'mdui/components/circular-progress.js'
 
-    onMount(() => {
-        if (didInit) return
-        didInit = true
+    type SortBy = 'title' | 'artist' | 'album'
 
-        void initLibraryPage()
+    let query = $state('')
+    let sortBy = $state<SortBy>('title')
+
+    const collator = new Intl.Collator('zh-Hans-CN', {
+        numeric: true,
+        sensitivity: 'base',
     })
 
-    async function initLibraryPage() {
-        try {
-            console.trace('[library/+page.svelte] onMount init')
+    onMount(() => {
+        void musicLibrary.refresh()
+    })
 
-            const tracks = await musicLibrary.refresh()
+    let filteredTracks = $derived.by(() => {
+        const keyword = query.trim().toLowerCase()
 
-            if (player.playlist.length === 0 && tracks.length > 0) {
-                player.playlist = tracks
+        const tracks = keyword
+            ? musicLibrary.tracks.filter(track =>
+                  [track.title, track.artist, track.album, track.path]
+                      .filter(Boolean)
+                      .some(value => value.toLowerCase().includes(keyword)),
+              )
+            : musicLibrary.tracks
 
-                if (player.currentIndex === -1) {
-                    player.currentIndex = 0
-                }
-            }
-        } catch (err) {
-            console.error('加载本地媒体库失败:', err)
-        }
+        return [...tracks].sort((a, b) => {
+            return collator.compare(a[sortBy] ?? '', b[sortBy] ?? '')
+        })
+    })
+
+    let totalDuration = $derived(
+        musicLibrary.tracks.reduce((sum, track) => sum + track.duration, 0),
+    )
+
+    function playAll() {
+        if (filteredTracks.length === 0) return
+
+        player.playlist = filteredTracks
+        void player.playByIndex(0)
     }
 </script>
 
-<section class="w-full min-h-full overflow-y-auto">
-    {#if musicLibrary.tracks.length !== 0}
-        <header
-            class="flex justify-between items-end pb-3 border-b themed-border"
+<svelte:head>
+    <title>歌曲</title>
+</svelte:head>
+
+<section class="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+    <header
+        class="flex flex-col gap-4 border-b border-[rgb(var(--mdui-color-outline-variant))] pb-5"
+    >
+        <div class="flex flex-wrap items-end justify-between gap-4">
+            <div class="min-w-0">
+                <p
+                    class="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--mdui-color-primary))]"
+                >
+                    Library
+                </p>
+
+                <h1
+                    class="mt-1 text-3xl font-bold tracking-tight text-[rgb(var(--mdui-color-on-surface))]"
+                >
+                    歌曲
+                </h1>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <Button
+                    variant="filled"
+                    disabled={filteredTracks.length === 0}
+                    onclick={playAll}
+                >
+                    播放全部
+                </Button>
+
+                <Button
+                    variant="outlined"
+                    onclick={() => musicLibrary.refresh({ force: true })}
+                >
+                    刷新
+                </Button>
+            </div>
+        </div>
+
+        <Filters
+            bind:query
+            bind:sortBy
+            searchPlaceholder="搜索标题、歌手、专辑..."
+            sortOptions={[
+                    { label: '按标题排序', value: 'title' },
+                    { label: '按歌手排序', value: 'artist' },
+                    { label: '按专辑排序', value: 'album' },
+                ]}
+        />
+    </header>
+
+    {#if musicLibrary.isLoading}
+        <div class="flex flex-1 items-center justify-center">
+            <mdui-circular-progress></mdui-circular-progress>
+        </div>
+    {:else if musicLibrary.error}
+        <div class="flex flex-1 items-center justify-center text-red-500">
+            {musicLibrary.error}
+        </div>
+    {:else if filteredTracks.length === 0}
+        <div
+            class="flex flex-1 flex-col items-center justify-center gap-2 text-[rgb(var(--mdui-color-on-surface-variant))]"
         >
-            <h2 class="text-2xl font-bold tracking-wide themed-text-primary">
-                我的音乐库
-            </h2>
-            <span class="text-sm themed-text-secondary"
-                >{musicLibrary.tracks.length} 首歌曲</span
-            >
-        </header>
-        <TrackList tracks={musicLibrary.tracks} />
+            <div class="text-5xl">🎵</div>
+            <div class="text-base font-medium">没有找到歌曲</div>
+            <div class="text-sm">尝试刷新媒体库或修改搜索关键词</div>
+        </div>
     {:else}
-        <div class="flex h-full w-full justify-center items-center">
-            {#if musicLibrary.isLoading}
-                正在加载媒体库...
-            {:else}
-                没有音乐哦
-            {/if}
+        <div class="min-h-0 flex-1 overflow-auto">
+            <TrackList tracks={filteredTracks as Track[]} />
         </div>
     {/if}
 </section>

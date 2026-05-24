@@ -1,12 +1,13 @@
 <script lang="ts">
-    import { musicLibrary } from '$lib/library.svelte'
-    import { player, type TrackInfo } from '$lib/player.svelte'
+    import { musicLibrary } from '$lib/state/library.svelte'
+    import { player } from '$lib/state/player.svelte'
+    import type { Track } from '$lib/types'
     import { invoke } from '@tauri-apps/api/core'
     import { open } from '@tauri-apps/plugin-dialog'
     import 'mdui/components/navigation-rail-item.js'
     import 'mdui/components/navigation-rail.js'
 
-    async function importMusicFolder(): Promise<TrackInfo[] | undefined> {
+    async function importMusicFolder(): Promise<Track[] | undefined> {
         const selectedDir = await open({
             directory: true,
             multiple: false,
@@ -19,7 +20,7 @@
         }
 
         try {
-            const tracks: TrackInfo[] = await invoke('scan_music_directory', {
+            const tracks: Track[] = await invoke('scan_music_directory', {
                 dirPath: selectedDir,
             })
 
@@ -55,17 +56,16 @@
     ></mdui-fab>
     <!-- <mdui-button-icon icon="settings" slot="bottom"></mdui-button-icon> -->
 
-    <mdui-navigation-rail-item
-        icon="watch_later--outlined"
-        href="/recent">Recent</mdui-navigation-rail-item
+    <mdui-navigation-rail-item icon="watch_later--outlined" href="/recent"
+        >Recent</mdui-navigation-rail-item
     >
     <mdui-navigation-rail-item icon="library_music--outlined" href="/library"
         >Library</mdui-navigation-rail-item
     >
-    <mdui-navigation-rail-item icon="track_changes--outlined"
-        >Track</mdui-navigation-rail-item
+    <mdui-navigation-rail-item icon="track_changes--outlined" href="/album"
+        >Album</mdui-navigation-rail-item
     >
-    <mdui-navigation-rail-item icon="person--outlined"
+    <mdui-navigation-rail-item icon="person--outlined" href="/artists"
         >Artist</mdui-navigation-rail-item
     >
 </mdui-navigation-rail>
