@@ -2,6 +2,7 @@ export interface Track {
     title: string
     artist: string
     album: string
+    albumArtist: string
     duration: number
     sampleRate?: number | null
     cover?: string | null
@@ -21,7 +22,6 @@ export interface Artist {
     cover?: string | null
     trackCount: number
     albumCount: number
-    duration: number
     tracks: Track[]
 }
 
@@ -29,10 +29,8 @@ export interface Artist {
 export interface Album {
     id: string
     title: string
-    artist: string
     cover?: string | null
     trackCount: number
-    duration: number
     tracks: Track[]
     representativeTrack: Track
 }

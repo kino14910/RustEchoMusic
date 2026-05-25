@@ -5,6 +5,7 @@
     import { onMount } from 'svelte'
 
     import Button from '$lib/components/base/Button.svelte'
+    import Heading from '$lib/components/base/Heading.svelte'
     import Filters from '$lib/features/Filters.svelte'
     import 'mdui/components/button.js'
     import 'mdui/components/circular-progress.js'
@@ -34,7 +35,6 @@
                 name: string
                 tracks: Track[]
                 albums: Set<string>
-                duration: number
                 cover?: string | null
             }
         >()
@@ -48,7 +48,6 @@
                     name,
                     tracks: [],
                     albums: new Set(),
-                    duration: 0,
                     cover: track.cover ?? null,
                 })
             }
@@ -56,7 +55,6 @@
             const artist = artistMap.get(key)!
 
             artist.tracks.push(track)
-            artist.duration += track.duration
 
             if (track.album?.trim()) {
                 artist.albums.add(track.album.trim())
@@ -73,7 +71,6 @@
             cover: artist.cover,
             trackCount: artist.tracks.length,
             albumCount: artist.albums.size,
-            duration: artist.duration,
             tracks: artist.tracks,
         }))
     }
@@ -108,70 +105,50 @@
             shape: 'circle' as const,
         })),
     )
-
-    let totalDuration = $derived(
-        artists.reduce((sum, artist) => sum + artist.duration, 0),
-    )
 </script>
 
 <svelte:head>
-    <title>歌手</title>
+    <title>艺术家</title>
 </svelte:head>
 
-<section class="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
-    <header
-        class="flex flex-col gap-4 border-b border-[rgb(var(--mdui-color-outline-variant))] pb-5"
-    >
-        <div class="flex flex-wrap items-end justify-between gap-4">
-            <div class="min-w-0">
-                <p
-                    class="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--mdui-color-primary))]"
-                >
-                    Artists
-                </p>
+<header
+    class="flex flex-col gap-4 pb-5"
+>
+    <Heading eyebrow="artist" title="艺术家">
+        <Button
+            variant="outlined"
+            onclick={() => musicLibrary.refresh({ force: true })}
+        >
+            刷新
+        </Button>
+    </Heading>
 
-                <h1
-                    class="mt-1 text-3xl font-bold tracking-tight text-[rgb(var(--mdui-color-on-surface))]"
-                >
-                    歌手
-                </h1>
-            </div>
+    <Filters
+        bind:query
+        bind:sortBy
+        searchPlaceholder="搜索歌手..."
+        sortOptions={[
+            { label: '按名称排序', value: 'name' },
+            { label: '按歌曲数排序', value: 'trackCount' },
+            { label: '按专辑数排序', value: 'albumCount' },
+        ]}
+    />
+</header>
 
-            <Button
-                variant="outlined"
-                onclick={() => musicLibrary.refresh({ force: true })}
-            >
-                刷新
-            </Button>
-        </div>
-
-        <Filters
-            bind:query
-            bind:sortBy
-            searchPlaceholder="搜索歌手..."
-            sortOptions={[
-                { label: '按名称排序', value: 'name' },
-                { label: '按歌曲数排序', value: 'trackCount' },
-                { label: '按专辑数排序', value: 'albumCount' },
-            ]}
+{#if musicLibrary.isLoading}
+    <div class="flex flex-1 items-center justify-center">
+        <mdui-circular-progress></mdui-circular-progress>
+    </div>
+{:else if musicLibrary.error}
+    <div class="flex flex-1 items-center justify-center text-red-500">
+        {musicLibrary.error}
+    </div>
+{:else}
+    <div class="min-h-0 flex-1 overflow-auto pb-8">
+        <MediaGrid
+            items={artistItems}
+            emptyTitle="没有找到歌手"
+            emptyDescription="尝试刷新媒体库或修改搜索关键词"
         />
-    </header>
-
-    {#if musicLibrary.isLoading}
-        <div class="flex flex-1 items-center justify-center">
-            <mdui-circular-progress></mdui-circular-progress>
-        </div>
-    {:else if musicLibrary.error}
-        <div class="flex flex-1 items-center justify-center text-red-500">
-            {musicLibrary.error}
-        </div>
-    {:else}
-        <div class="min-h-0 flex-1 overflow-auto pb-8">
-            <MediaGrid
-                items={artistItems}
-                emptyTitle="没有找到歌手"
-                emptyDescription="尝试刷新媒体库或修改搜索关键词"
-            />
-        </div>
-    {/if}
-</section>
+    </div>
+{/if}

@@ -43,6 +43,7 @@ pub struct Track {
     title: String,
     artist: String,
     album: String,
+    album_artist: String,
     duration: f64,
     sample_rate: Option<u32>,
     cover: Option<String>,
@@ -145,6 +146,13 @@ pub async fn set_volume(volume: u8) -> Result<(), String> {
 
 fn parse_single_track(file_path: &Path) -> Option<Track> {
     let tagged_file = Probe::open(file_path).ok()?.read().ok()?;
+    for tag in tagged_file.tags() {
+        println!("==== TAG {:?} ====", tag.tag_type());
+
+        for item in tag.items() {
+            println!("{:?} = {:?}", item.key(), item.value());
+        }
+    }
     let tag = tagged_file
         .primary_tag()
         .or_else(|| tagged_file.first_tag());
@@ -170,6 +178,14 @@ fn parse_single_track(file_path: &Path) -> Option<Track> {
         .map(|s| s.to_string())
         .unwrap_or_else(|| "Unknown Album".to_string());
 
+    let album_artist = tag
+        .and_then(|t| {
+            t.get_string(ItemKey::AlbumArtist)
+                .or_else(|| t.get_string(ItemKey::AlbumArtists))
+        })
+        .map(|s| s.to_string())
+        .unwrap_or_default();
+
     let props = tagged_file.properties();
     let duration = props.duration().as_secs_f64();
     let sample_rate = props.sample_rate();
@@ -178,6 +194,7 @@ fn parse_single_track(file_path: &Path) -> Option<Track> {
         title,
         artist,
         album,
+        album_artist,
         duration,
         sample_rate,
         cover: None,
@@ -211,9 +228,7 @@ pub async fn get_track_cover(full_path: String) -> Result<Option<String>, String
     Ok(cover)
 }
 
-async fn scan_music_directory_logic(
-    app_handle: &tauri::AppHandle,
-) -> Result<Vec<Track>, String> {
+async fn scan_music_directory_logic(app_handle: &tauri::AppHandle) -> Result<Vec<Track>, String> {
     let music_dir = app_handle
         .path()
         .audio_dir()

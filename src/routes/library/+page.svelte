@@ -6,6 +6,7 @@
     import { onMount } from 'svelte'
 
     import Button from '$lib/components/base/Button.svelte'
+    import Heading from '$lib/components/base/Heading.svelte'
     import Filters from '$lib/features/Filters.svelte'
     import 'mdui/components/button.js'
     import 'mdui/components/circular-progress.js'
@@ -56,74 +57,57 @@
     <title>歌曲</title>
 </svelte:head>
 
-<section class="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
-    <header
-        class="flex flex-col gap-4 border-b border-[rgb(var(--mdui-color-outline-variant))] pb-5"
+<header
+    class="flex flex-col gap-4 border-b border-[rgb(var(--mdui-color-outline-variant))] pb-5"
+>
+    <Heading eyebrow="library" title="歌曲">
+        <div class="flex items-center gap-2">
+            <Button
+                variant="filled"
+                disabled={filteredTracks.length === 0}
+                onclick={playAll}
+            >
+                播放全部
+            </Button>
+
+            <Button
+                variant="outlined"
+                onclick={() => musicLibrary.refresh({ force: true })}
+            >
+                刷新
+            </Button>
+        </div>
+    </Heading>
+    <Filters
+        bind:query
+        bind:sortBy
+        searchPlaceholder="搜索标题、歌手、专辑..."
+        sortOptions={[
+            { label: '按标题排序', value: 'title' },
+            { label: '按歌手排序', value: 'artist' },
+            { label: '按专辑排序', value: 'album' },
+        ]}
+    />
+</header>
+
+{#if musicLibrary.isLoading}
+    <div class="flex flex-1 items-center justify-center">
+        <mdui-circular-progress></mdui-circular-progress>
+    </div>
+{:else if musicLibrary.error}
+    <div class="flex flex-1 items-center justify-center text-red-500">
+        {musicLibrary.error}
+    </div>
+{:else if filteredTracks.length === 0}
+    <div
+        class="flex flex-1 flex-col items-center justify-center gap-2 text-[rgb(var(--mdui-color-on-surface-variant))]"
     >
-        <div class="flex flex-wrap items-end justify-between gap-4">
-            <div class="min-w-0">
-                <p
-                    class="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--mdui-color-primary))]"
-                >
-                    Library
-                </p>
-
-                <h1
-                    class="mt-1 text-3xl font-bold tracking-tight text-[rgb(var(--mdui-color-on-surface))]"
-                >
-                    歌曲
-                </h1>
-            </div>
-
-            <div class="flex items-center gap-2">
-                <Button
-                    variant="filled"
-                    disabled={filteredTracks.length === 0}
-                    onclick={playAll}
-                >
-                    播放全部
-                </Button>
-
-                <Button
-                    variant="outlined"
-                    onclick={() => musicLibrary.refresh({ force: true })}
-                >
-                    刷新
-                </Button>
-            </div>
-        </div>
-
-        <Filters
-            bind:query
-            bind:sortBy
-            searchPlaceholder="搜索标题、歌手、专辑..."
-            sortOptions={[
-                    { label: '按标题排序', value: 'title' },
-                    { label: '按歌手排序', value: 'artist' },
-                    { label: '按专辑排序', value: 'album' },
-                ]}
-        />
-    </header>
-
-    {#if musicLibrary.isLoading}
-        <div class="flex flex-1 items-center justify-center">
-            <mdui-circular-progress></mdui-circular-progress>
-        </div>
-    {:else if musicLibrary.error}
-        <div class="flex flex-1 items-center justify-center text-red-500">
-            {musicLibrary.error}
-        </div>
-    {:else if filteredTracks.length === 0}
-        <div
-            class="flex flex-1 flex-col items-center justify-center gap-2 text-[rgb(var(--mdui-color-on-surface-variant))]"
-        >
-            <div class="text-5xl">🎵</div>
-            <div class="text-base font-medium">没有找到歌曲</div>
-            <div class="text-sm">尝试刷新媒体库或修改搜索关键词</div>
-        </div>
-    {:else}
-        <div class="min-h-0 flex-1 overflow-auto">
-            <TrackList tracks={filteredTracks as Track[]} />
-        </div>
-    {/if}
-</section>
+        <div class="text-5xl">🎵</div>
+        <div class="text-base font-medium">没有找到歌曲</div>
+        <div class="text-sm">尝试刷新媒体库或修改搜索关键词</div>
+    </div>
+{:else}
+    <div class="min-h-0 flex-1 overflow-auto">
+        <TrackList tracks={filteredTracks as Track[]} />
+    </div>
+{/if}
