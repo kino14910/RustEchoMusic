@@ -57,9 +57,7 @@
     <title>歌曲</title>
 </svelte:head>
 
-<header
-    class="flex flex-col gap-4 border-b border-[rgb(var(--mdui-color-outline-variant))] pb-5"
->
+<header class="border-b border-[rgb(var(--mdui-color-outline-variant))] pb-5">
     <Heading eyebrow="library" title="歌曲">
         <div class="flex items-center gap-2">
             <Button

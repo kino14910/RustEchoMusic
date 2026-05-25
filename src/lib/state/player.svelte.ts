@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core"
-import type { Track } from "../types/types"
+import type { Track } from "../types/music"
 import { recentlyPlayed } from "./recent.svelte"
 
 

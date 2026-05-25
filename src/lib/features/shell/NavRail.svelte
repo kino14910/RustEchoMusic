@@ -68,4 +68,10 @@
     <mdui-navigation-rail-item icon="person--outlined" href="/artists"
         >Artist</mdui-navigation-rail-item
     >
+
+    <mdui-navigation-rail-item
+        icon="settings--outlined"
+        href="/settings"
+        slot="bottom">Settings</mdui-navigation-rail-item
+    >
 </mdui-navigation-rail>

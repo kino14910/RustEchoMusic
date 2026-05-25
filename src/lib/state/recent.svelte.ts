@@ -1,6 +1,6 @@
 
 import { invoke } from '@tauri-apps/api/core'
-import type { Track } from '../types/types'
+import type { Track } from '../types/music'
 
 class RecentlyPlayed {
     tracks = $state<Track[]>([])

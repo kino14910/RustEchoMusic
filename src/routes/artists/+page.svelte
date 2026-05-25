@@ -111,9 +111,7 @@
     <title>艺术家</title>
 </svelte:head>
 
-<header
-    class="flex flex-col gap-4 pb-5"
->
+<header class="pb-5">
     <Heading eyebrow="artist" title="艺术家">
         <Button
             variant="outlined"

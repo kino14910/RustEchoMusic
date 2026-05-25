@@ -65,7 +65,7 @@
             }
         }
 
-        return Array.from(albumMap.values()).map((album) => ({
+        return Array.from(albumMap.values()).map(album => ({
             ...album,
             id: createAlbumId(album.title),
             trackCount: album.tracks.length,
@@ -78,7 +78,7 @@
         const keyword = query.trim().toLowerCase()
 
         const list = keyword
-            ? albums.filter((album) =>
+            ? albums.filter(album =>
                   album.title.toLowerCase().includes(keyword),
               )
             : albums
@@ -99,7 +99,7 @@
     })
 
     let albumItems = $derived(
-        filteredAlbums.map((album) => ({
+        filteredAlbums.map(album => ({
             id: album.id,
             title: album.title,
             subtitle: `${album.trackCount} 首歌曲`,
@@ -114,7 +114,7 @@
     <title>专辑</title>
 </svelte:head>
 
-<header class="flex flex-col gap-4 pb-5">
+<header class="pb-5">
     <Heading eyebrow="Albums" title="专辑">
         <Button
             variant="outlined"

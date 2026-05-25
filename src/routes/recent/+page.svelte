@@ -17,9 +17,7 @@
     <title>最近播放</title>
 </svelte:head>
 
-<header
-    class="flex items-end justify-between gap-4 shrink-0 pb-3 border-b themed-border"
->
+<header class="border-b border-[rgb(var(--mdui-color-outline-variant))] pb-5">
     <Heading eyebrow="Recent" title="最近播放">
         {#if recentlyPlayed.tracks.length > 0}
             <Button variant="outlined" onclick={() => recentlyPlayed.clear()}>

@@ -4,7 +4,7 @@
     type PageHeadingProps = {
         eyebrow: string
         title: string
-        children: Snippet
+        children?: Snippet
         class?: string
     }
 
@@ -16,8 +16,8 @@
     }: PageHeadingProps = $props()
 </script>
 
-<div class="flex flex-wrap items-end justify-between gap-4">
-    <div class="min-w-0">
+<div class="flex justify-between mx-2">
+    <div>
         <p
             class="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--mdui-color-primary))]"
         >
@@ -31,5 +31,7 @@
         </h1>
     </div>
 
-    {@render children()}
+    {#if children}
+        {@render children()}
+    {/if}
 </div>
