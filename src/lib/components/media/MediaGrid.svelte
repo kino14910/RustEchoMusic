@@ -25,7 +25,7 @@
 {#snippet mediaCard(item: MediaGridItem)}
     <mdui-card
         href={item.href ?? undefined}
-        class="group block outline-none"
+        class="group"
         aria-label={item.title}
     >
         <div
@@ -39,7 +39,7 @@
                 <img
                     src={item.image}
                     alt={item.title}
-                    class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    class="h-full w-full object-cover group-hover:scale-105"
                     loading="lazy"
                 />
             {:else}

@@ -13,7 +13,7 @@ pub struct AppSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ThemeMode {
-    System,
+    Auto,
     Light,
     Dark,
 }
@@ -21,7 +21,7 @@ pub enum ThemeMode {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            theme: ThemeMode::System,
+            theme: ThemeMode::Auto,
             volume: 80,
             library_dirs: Vec::new(),
             scan_on_startup: false,

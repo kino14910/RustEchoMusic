@@ -2,7 +2,7 @@ import type { AppSettings } from '$lib/types'
 import { invoke } from '@tauri-apps/api/core'
 
 export const DEFAULT_SETTINGS: AppSettings = {
-    theme: 'system',
+    theme: 'auto',
     volume: 80,
     libraryDirs: [],
     scanOnStartup: false,

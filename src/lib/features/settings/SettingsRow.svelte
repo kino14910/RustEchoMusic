@@ -18,7 +18,7 @@
 
 <div class={`flex items-center justify-between gap-4 ${className}`}>
     <div class="min-w-0">
-        <div class="text-sm font-medium">{title}</div>
+        <div class="text-sm font-medium text-[rgb(var(--mdui-color-on-surface))]">{title}</div>
 
         {#if description}
             <div

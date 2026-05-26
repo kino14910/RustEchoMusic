@@ -80,7 +80,7 @@
 {#snippet trackCover(track: Track, cover: string | null)}
     <div
         use:lazyCover={track}
-        class="w-10 h-10 rounded-md overflow-hidden themed-surface-container shrink-0 transition-transform duration-300 group-hover:scale-105 group-hover:shadow-md"
+        class="w-10 h-10 rounded-md overflow-hidden themed-surface-container shrink-0 transition-transform duration-100! group-hover:scale-105 group-hover:shadow-md"
     >
         {#if cover}
             <img

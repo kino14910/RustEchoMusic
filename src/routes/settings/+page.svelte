@@ -2,7 +2,6 @@
     import Button from '$lib/components/base/Button.svelte'
     import Heading from '$lib/components/base/Heading.svelte'
     import Select from '$lib/components/base/Select.svelte'
-    import TextField from '$lib/components/base/TextField.svelte'
     import { registerBuiltinExtensions } from '$lib/extensions/builtin'
     import { extensionRegistry } from '$lib/extensions/registry.svelte'
     import SettingsListItem from '$lib/features/settings/SettingsListItem.svelte'
@@ -12,13 +11,15 @@
     import type { ThemeMode } from '$lib/types'
     import { onMount } from 'svelte'
 
+    import { open } from '@tauri-apps/plugin-dialog'
     import 'mdui/components/circular-progress.js'
     import 'mdui/components/switch.js'
+    import { setTheme } from 'mdui/functions/setTheme.js'
 
     let newLibraryDir = $state('')
 
     const themeOptions: { label: string; value: ThemeMode }[] = [
-        { label: '跟随系统', value: 'system' },
+        { label: '跟随系统', value: 'auto' },
         { label: '浅色模式', value: 'light' },
         { label: '深色模式', value: 'dark' },
     ]
@@ -45,6 +46,22 @@
             [key]: target.checked,
         })
     }
+
+    async function handleSelectDirectory() {
+        try {
+            const selected = await open({
+                directory: true,
+                multiple: false,
+                title: '选择音乐媒体库目录',
+            })
+
+            if (selected && typeof selected === 'string') {
+                settings.addLibraryDir(selected)
+            }
+        } catch (err) {
+            console.error('打开文件夹选择器失败:', err)
+        }
+    }
 </script>
 
 <svelte:head>
@@ -54,126 +71,117 @@
 <section class="flex h-full min-h-0 flex-col gap-6 overflow-auto pb-10">
     <Heading eyebrow="Settings" title="设置" />
 
-    {#if settings.isLoading}
-        <div class="flex flex-1 items-center justify-center">
-            <mdui-circular-progress></mdui-circular-progress>
-        </div>
-    {:else}
-        <div class="grid gap-6">
-            <SettingsSection title="外观">
-                <SettingsRow title="主题" description="设置应用的明暗模式">
-                    <div class="w-48">
-                        <Select
-                            value={settings.data.theme}
-                            options={themeOptions}
-                            onchange={value => {
-                                settings.update({
-                                    theme: value as ThemeMode,
-                                })
-                            }}
-                        />
-                    </div>
-                </SettingsRow>
+    <div
+        class="flex flex-1 items-center justify-center"
+        class:hidden={!settings.isLoading}
+    >
+        <mdui-circular-progress></mdui-circular-progress>
+    </div>
 
-                <SettingsRow
-                    title="减少动画"
-                    description="降低界面动画和过渡效果"
-                >
-                    <mdui-switch
-                        checked={settings.data.reduceMotion}
-                        onchange={(event: Event) =>
-                            handleSwitchChange(event, 'reduceMotion')}
-                    ></mdui-switch>
-                </SettingsRow>
-            </SettingsSection>
-
-            <SettingsSection title="媒体库">
-                <SettingsRow
-                    title="启动时扫描"
-                    description="应用启动时自动刷新媒体库"
-                >
-                    <mdui-switch
-                        checked={settings.data.scanOnStartup}
-                        onchange={(event: Event) =>
-                            handleSwitchChange(event, 'scanOnStartup')}
-                    ></mdui-switch>
-                </SettingsRow>
-
-                <div class="grid gap-3">
-                    <div>
-                        <div class="text-sm font-medium">媒体库目录</div>
-                        <div
-                            class="text-xs text-[rgb(var(--mdui-color-on-surface-variant))]"
-                        >
-                            后续可以接入 Tauri 文件夹选择器
-                        </div>
-                    </div>
-
-                    <div class="flex gap-2">
-                        <TextField
-                            bind:value={newLibraryDir}
-                            variant="outlined"
-                            placeholder="输入音乐目录路径"
-                        />
-
-                        <Button variant="filled" onclick={addLibraryDir}>
-                            添加
-                        </Button>
-                    </div>
-
-                    {#if settings.data.libraryDirs.length > 0}
-                        <div class="grid gap-2">
-                            {#each settings.data.libraryDirs as dir (dir)}
-                                <SettingsListItem title={dir}>
-                                    <Button
-                                        variant="text"
-                                        onclick={() =>
-                                            settings.removeLibraryDir(dir)}
-                                    >
-                                        移除
-                                    </Button>
-                                </SettingsListItem>
-                            {/each}
-                        </div>
-                    {:else}
-                        <div
-                            class={`rounded-2xl border border-dashed border-[rgb(var(--mdui-color-outline-variant))] p-4 text-sm text-[rgb(var(--mdui-color-on-surface-variant))]`}
-                        >
-                            暂未添加媒体库目录
-                        </div>
-                    {/if}
+    <div class="grid gap-6" class:hidden={settings.isLoading}>
+        <SettingsSection title="外观">
+            <SettingsRow title="主题" description="设置应用的明暗模式">
+                <div class="w-48">
+                    <Select
+                        value={settings.data?.theme}
+                        options={themeOptions}
+                        onchange={value => {
+                            settings.update({
+                                theme: value as ThemeMode,
+                            })
+                            setTheme(value as ThemeMode)
+                        }}
+                    />
                 </div>
-            </SettingsSection>
+            </SettingsRow>
 
-            <SettingsSection title="扩展" contentClass="mt-4 grid gap-3">
-                {#each extensionRegistry.extensions as extension (extension.id)}
-                    <SettingsListItem
-                        title={extension.name}
-                        description={extension.description}
+            <SettingsRow title="减少动画" description="降低界面动画和过渡效果">
+                <mdui-switch
+                    checked={settings.data?.reduceMotion}
+                    onchange={(event: Event) =>
+                        handleSwitchChange(event, 'reduceMotion')}
+                ></mdui-switch>
+            </SettingsRow>
+        </SettingsSection>
+
+        <SettingsSection title="媒体库">
+            <SettingsRow
+                title="启动时扫描"
+                description="应用启动时自动刷新媒体库"
+            >
+                <mdui-switch
+                    checked={settings.data?.scanOnStartup}
+                    onchange={(event: Event) =>
+                        handleSwitchChange(event, 'scanOnStartup')}
+                ></mdui-switch>
+            </SettingsRow>
+            <div class="grid gap-3">
+                <div>
+                    <div class="text-sm font-medium">媒体库目录</div>
+                    <div
+                        class="text-xs text-[rgb(var(--mdui-color-on-surface-variant))]"
                     >
-                        <mdui-switch
-                            checked={extension.enabled !== false}
-                            onchange={(event: Event) => {
-                                const target =
-                                    event.currentTarget as HTMLElement & {
-                                        checked: boolean
-                                    }
-
-                                extensionRegistry.setEnabled(
-                                    extension.id,
-                                    target.checked,
-                                )
-                            }}
-                        ></mdui-switch>
-                    </SettingsListItem>
-                {/each}
-            </SettingsSection>
-
-            {#if settings.error}
-                <div class="text-sm text-red-500">
-                    {settings.error}
+                        管理应用扫描音乐文件的本地文件夹
+                    </div>
                 </div>
-            {/if}
-        </div>
-    {/if}
+
+                <div class="flex">
+                    <Button variant="tonal" onclick={handleSelectDirectory}>
+                        选择本地文件夹
+                    </Button>
+                </div>
+
+                {#if settings.data?.libraryDirs?.length > 0}
+                    <div class="grid gap-2 mt-2">
+                        {#each settings.data.libraryDirs as dir (dir)}
+                            <SettingsListItem title={dir}>
+                                <Button
+                                    variant="text"
+                                    onclick={() =>
+                                        settings.removeLibraryDir(dir)}
+                                >
+                                    <span class="text-red-500">移除</span>
+                                </Button>
+                            </SettingsListItem>
+                        {/each}
+                    </div>
+                {:else}
+                    <div
+                        class="rounded-2xl border border-dashed border-[rgb(var(--mdui-color-outline-variant))] p-4 text-sm text-[rgb(var(--mdui-color-on-surface-variant))]"
+                    >
+                        暂未添加媒体库目录，应用将无法扫描到任何歌曲。
+                    </div>
+                {/if}
+            </div>
+        </SettingsSection>
+
+        <SettingsSection title="扩展" contentClass="mt-4 grid gap-3">
+            {#each extensionRegistry.extensions as extension (extension.id)}
+                <SettingsListItem
+                    title={extension.name}
+                    description={extension.description}
+                >
+                    <mdui-switch
+                        checked={extension.enabled !== false}
+                        onchange={(event: Event) => {
+                            const target =
+                                event.currentTarget as HTMLElement & {
+                                    checked: boolean
+                                }
+                            extensionRegistry.setEnabled(
+                                extension.id,
+                                target.checked,
+                            )
+                        }}
+                    ></mdui-switch>
+                </SettingsListItem>
+            {/each}
+        </SettingsSection>
+
+        {#if settings.error}
+            <div class="text-sm text-red-500">
+                {settings.error}
+            </div>
+        {/if}
+    </div>
 </section>

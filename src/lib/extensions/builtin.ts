@@ -42,19 +42,4 @@ export function registerBuiltinExtensions() {
             },
         ],
     })
-
-    extensionRegistry.register({
-        id: 'kino.settings',
-        name: 'Settings',
-        description: '应用设置页面',
-        navItems: [
-            {
-                id: 'settings',
-                title: '设置',
-                icon: 'settings--rounded',
-                href: '/settings',
-                order: 100,
-            },
-        ],
-    })
 }

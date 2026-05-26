@@ -31,7 +31,7 @@
         }
     }
 
-    async function playMusic() {
+    async function imoprtMusic() {
         const playlist = await importMusicFolder()
         if (!playlist) return
 
@@ -47,9 +47,9 @@
         lowered
         icon="playlist_add--rounded"
         slot="top"
-        onclick={playMusic}
+        onclick={imoprtMusic}
         onkeydown={(e: KeyboardEvent) => {
-            if (e.key === 'Enter' || e.key === ' ') playMusic()
+            if (e.key === 'Enter' || e.key === ' ') imoprtMusic()
         }}
         role="button"
         tabindex="0"

@@ -9,7 +9,9 @@
 
 <style lang="postcss">
     @reference "tailwindcss";
-    :global(html) {
-        background-color: theme(--color-gray-100);
+    @layer base {
+        :global(html) {
+            background-color: theme(--color-gray-100);
+        }
     }
 </style>
