@@ -2,7 +2,6 @@
     import MediaGrid from '$lib/components/media/MediaGrid.svelte'
     import { musicLibrary } from '$lib/state/library.svelte'
     import type { Artist, Track } from '$lib/types'
-    import { onMount } from 'svelte'
 
     import Button from '$lib/components/base/Button.svelte'
     import Heading from '$lib/components/base/Heading.svelte'
@@ -19,11 +18,7 @@
         numeric: true,
         sensitivity: 'base',
     })
-
-    onMount(() => {
-        void musicLibrary.refresh()
-    })
-
+    
     function createArtistId(name: string) {
         return encodeURIComponent(name)
     }
@@ -115,7 +110,7 @@
     <Heading eyebrow="artist" title="艺术家">
         <Button
             variant="outlined"
-            onclick={() => musicLibrary.refresh({ force: true })}
+            onclick={() => musicLibrary.scan()}
         >
             刷新
         </Button>

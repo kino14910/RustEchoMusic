@@ -3,7 +3,6 @@
     import { musicLibrary } from '$lib/state/library.svelte'
     import { player } from '$lib/state/player.svelte'
     import type { Track } from '$lib/types'
-    import { onMount } from 'svelte'
 
     import Button from '$lib/components/base/Button.svelte'
     import Heading from '$lib/components/base/Heading.svelte'
@@ -19,10 +18,6 @@
     const collator = new Intl.Collator('zh-Hans-CN', {
         numeric: true,
         sensitivity: 'base',
-    })
-
-    onMount(() => {
-        void musicLibrary.refresh()
     })
 
     let filteredTracks = $derived.by(() => {
@@ -48,8 +43,7 @@
     function playAll() {
         if (filteredTracks.length === 0) return
 
-        player.playlist = filteredTracks
-        void player.playByIndex(0)
+        player.replaceQueueAndPlay(filteredTracks, filteredTracks[0].id)
     }
 </script>
 
@@ -70,7 +64,7 @@
 
             <Button
                 variant="outlined"
-                onclick={() => musicLibrary.refresh({ force: true })}
+                onclick={() => musicLibrary.scan()}
             >
                 刷新
             </Button>

@@ -9,14 +9,13 @@
     import SettingsSection from '$lib/features/settings/SettingsSection.svelte'
     import { settings } from '$lib/state/settings.svelte'
     import type { ThemeMode } from '$lib/types'
+    import { importMusicDirectory, removeMusicDirectory } from '$lib/utils/library'
     import { onMount } from 'svelte'
 
-    import { open } from '@tauri-apps/plugin-dialog'
+    import { setTheme } from '@tauri-apps/api/app'
     import 'mdui/components/circular-progress.js'
     import 'mdui/components/switch.js'
-    import { setTheme } from 'mdui/functions/setTheme.js'
-
-    let newLibraryDir = $state('')
+    import { setTheme as setMduiTheme } from 'mdui/functions/setTheme.js'
 
     const themeOptions: { label: string; value: ThemeMode }[] = [
         { label: '跟随系统', value: 'auto' },
@@ -28,11 +27,6 @@
         registerBuiltinExtensions()
         void settings.load()
     })
-
-    function addLibraryDir() {
-        settings.addLibraryDir(newLibraryDir)
-        newLibraryDir = ''
-    }
 
     function handleSwitchChange(
         event: Event,
@@ -47,20 +41,18 @@
         })
     }
 
-    async function handleSelectDirectory() {
-        try {
-            const selected = await open({
-                directory: true,
-                multiple: false,
-                title: '选择音乐媒体库目录',
-            })
+    export async function setThemeMode(theme: ThemeMode) {
+        settings.update({
+            theme,
+        })
 
-            if (selected && typeof selected === 'string') {
-                settings.addLibraryDir(selected)
-            }
-        } catch (err) {
-            console.error('打开文件夹选择器失败:', err)
-        }
+        await applyTheme(theme)
+    }
+
+    export async function applyTheme(theme: ThemeMode) {
+        setMduiTheme(theme)
+
+        await setTheme(theme === 'auto' ? null : theme)
     }
 </script>
 
@@ -85,12 +77,7 @@
                     <Select
                         value={settings.data?.theme}
                         options={themeOptions}
-                        onchange={value => {
-                            settings.update({
-                                theme: value as ThemeMode,
-                            })
-                            setTheme(value as ThemeMode)
-                        }}
+                        onchange={value => setThemeMode(value as ThemeMode)}
                     />
                 </div>
             </SettingsRow>
@@ -126,8 +113,8 @@
                 </div>
 
                 <div class="flex">
-                    <Button variant="tonal" onclick={handleSelectDirectory}>
-                        选择本地文件夹
+                    <Button variant="tonal" onclick={importMusicDirectory}>
+                        添加本地文件夹
                     </Button>
                 </div>
 
@@ -138,7 +125,7 @@
                                 <Button
                                     variant="text"
                                     onclick={() =>
-                                        settings.removeLibraryDir(dir)}
+                                        removeMusicDirectory(dir)}
                                 >
                                     <span class="text-red-500">移除</span>
                                 </Button>

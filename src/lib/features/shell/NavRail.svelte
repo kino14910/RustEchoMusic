@@ -1,77 +1,78 @@
 <script lang="ts">
-    import { musicLibrary } from '$lib/state/library.svelte'
-    import { player } from '$lib/state/player.svelte'
-    import type { Track } from '$lib/types'
-    import { invoke } from '@tauri-apps/api/core'
-    import { open } from '@tauri-apps/plugin-dialog'
+    import { page } from '$app/state'
+
+    import { importMusicDirectory } from '$lib/utils/library'
+
     import 'mdui/components/navigation-rail-item.js'
     import 'mdui/components/navigation-rail.js'
 
-    async function importMusicFolder(): Promise<Track[] | undefined> {
-        const selectedDir = await open({
-            directory: true,
-            multiple: false,
-            title: '选择你的音乐库文件夹',
-        })
-
-        if (!selectedDir) {
-            console.error('音频文件不存在或已被移动')
-            return
-        }
-
-        try {
-            const tracks: Track[] = await invoke('scan_music_directory', {
-                dirPath: selectedDir,
-            })
-
-            console.log(`成功扫描到 ${tracks.length} 首歌曲！`, tracks)
-            return tracks
-        } catch (err) {
-            console.error('扫描音乐文件夹失败:', err)
-        }
+    type NavItem = {
+        label: string
+        href: string
+        icon: string
+        slot?: 'bottom'
     }
 
-    async function imoprtMusic() {
-        const playlist = await importMusicFolder()
-        if (!playlist) return
+    const navItems: NavItem[] = [
+        {
+            label: 'Recent',
+            href: '/recent',
+            icon: 'watch_later--outlined',
+        },
+        {
+            label: 'Library',
+            href: '/library',
+            icon: 'library_music--outlined',
+        },
+        {
+            label: 'Album',
+            href: '/album',
+            icon: 'track_changes--outlined',
+        },
+        {
+            label: 'Artist',
+            href: '/artists',
+            icon: 'person--outlined',
+        },
+        {
+            label: 'Settings',
+            href: '/settings',
+            icon: 'settings--outlined',
+            slot: 'bottom',
+        },
+    ]
 
-        player.playlist = playlist
-        player.playByIndex(0)
-
-        musicLibrary.tracks = playlist
-    }
+    const currentRoute = $derived.by(() => {
+        return (
+            navItems.find(item => page.url.pathname.startsWith(item.href))
+                ?.href ?? '/library'
+        )
+    })
 </script>
 
-<mdui-navigation-rail style="--z-index: 1">
+<mdui-navigation-rail style="--z-index: 1" value={currentRoute}>
     <mdui-fab
         lowered
         icon="playlist_add--rounded"
         slot="top"
-        onclick={imoprtMusic}
+        onclick={importMusicDirectory}
         onkeydown={(e: KeyboardEvent) => {
-            if (e.key === 'Enter' || e.key === ' ') imoprtMusic()
+            if (e.key === 'Enter' || e.key === ' ') {
+                importMusicDirectory()
+            }
         }}
         role="button"
         tabindex="0"
     ></mdui-fab>
-    <!-- <mdui-button-icon icon="settings" slot="bottom"></mdui-button-icon> -->
 
-    <mdui-navigation-rail-item icon="watch_later--outlined" href="/recent"
-        >Recent</mdui-navigation-rail-item
-    >
-    <mdui-navigation-rail-item icon="library_music--outlined" href="/library"
-        >Library</mdui-navigation-rail-item
-    >
-    <mdui-navigation-rail-item icon="track_changes--outlined" href="/album"
-        >Album</mdui-navigation-rail-item
-    >
-    <mdui-navigation-rail-item icon="person--outlined" href="/artists"
-        >Artist</mdui-navigation-rail-item
-    >
-
-    <mdui-navigation-rail-item
-        icon="settings--outlined"
-        href="/settings"
-        slot="bottom">Settings</mdui-navigation-rail-item
-    >
+    {#each navItems as item}
+        <mdui-navigation-rail-item
+            value={item.href}
+            href={item.href}
+            icon={item.icon}
+            slot={item.slot}
+        >
+            {item.label}
+        </mdui-navigation-rail-item>
+    {/each}
 </mdui-navigation-rail>

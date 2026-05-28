@@ -1,16 +1,11 @@
 <script lang="ts">
     import TrackList from '$lib/features/TrackList.svelte'
     import { recentlyPlayed } from '$lib/state/recent.svelte'
-    import { onMount } from 'svelte'
 
     import Button from '$lib/components/base/Button.svelte'
     import Heading from '$lib/components/base/Heading.svelte'
     import 'mdui/components/button.js'
     import 'mdui/components/circular-progress.js'
-
-    onMount(() => {
-        void recentlyPlayed.load()
-    })
 </script>
 
 <svelte:head>

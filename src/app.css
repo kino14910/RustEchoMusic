@@ -6,6 +6,7 @@
 @import 'material-symbols';
 
 @layer base {
+  
   * {
     transition: all 0.2s ease;
   }
@@ -57,6 +58,7 @@
     font-feature-settings: --theme(--default-font-feature-settings, normal); /* 5 */
     font-variation-settings: --theme(--default-font-variation-settings, normal); /* 6 */
     -webkit-tap-highlight-color: transparent; /* 7 */
+    background-color: theme(--color-gray-100);
   }
 
   /*

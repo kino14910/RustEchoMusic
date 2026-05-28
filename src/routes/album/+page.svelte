@@ -6,7 +6,6 @@
     import { trackCovers } from '$lib/state/covers.svelte'
     import { musicLibrary } from '$lib/state/library.svelte'
     import type { Album, Track } from '$lib/types'
-    import { onMount } from 'svelte'
 
     import 'mdui/components/circular-progress.js'
 
@@ -18,10 +17,6 @@
     const collator = new Intl.Collator('zh-Hans-CN', {
         numeric: true,
         sensitivity: 'base',
-    })
-
-    onMount(() => {
-        void musicLibrary.refresh()
     })
 
     function createAlbumId(title: string) {
@@ -118,7 +113,7 @@
     <Heading eyebrow="Albums" title="专辑">
         <Button
             variant="outlined"
-            onclick={() => musicLibrary.refresh({ force: true })}
+            onclick={() => musicLibrary.scan()}
         >
             刷新
         </Button>

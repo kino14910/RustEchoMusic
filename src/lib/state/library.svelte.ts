@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { Track } from '../types/music'
+import { settings } from './settings.svelte'
 
 class MusicLibrary {
     tracks = $state<Track[]>([])
@@ -8,7 +9,7 @@ class MusicLibrary {
 
     private refreshPromise: Promise<Track[]> | null = null
 
-    async refresh(options: { force?: boolean } = {}): Promise<Track[]> {
+    async load(options: { force?: boolean } = {}): Promise<Track[]> {
         const { force = false } = options
 
         if (this.refreshPromise) {
@@ -38,6 +39,32 @@ class MusicLibrary {
         })()
 
         return this.refreshPromise
+    }
+
+    async scan(): Promise<Track[]> {
+        try {
+            this.isLoading = true
+            this.error = null
+
+            const tracks = await invoke<Track[]>(
+                'scan_music_directories',
+                {
+                    dirs: settings.data.libraryDirs,
+                }
+            )
+
+            this.tracks = tracks
+
+            return tracks
+        } catch (err) {
+            console.error('扫描媒体库失败:', err)
+
+            this.error = String(err)
+
+            return this.tracks
+        } finally {
+            this.isLoading = false
+        }
     }
 }
 
