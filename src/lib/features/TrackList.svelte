@@ -37,9 +37,8 @@
         }
     }
 
-    function handlePlay(clickedTrack: Track, clickedIndex: number) {
-        player.playlist = tracks
-        player.playByIndex(clickedIndex)
+    function handlePlay(clickedTrack: Track) {
+        player.replaceQueueAndPlay(tracks, clickedTrack.id)
 
         void trackCovers.load(clickedTrack)
     }
@@ -138,15 +137,14 @@
 {/snippet}
 
 {#snippet trackItem(track: Track, index: number)}
-    {@const isCurrent =
-        player.playlist[player.currentIndex]?.path === track.path}
+    {@const isCurrent = player.currentTrack?.id === track.id}
     {@const cover = trackCovers.get(track)}
 
     <mdui-list-item
         class="group w-full rounded-xl transition-all duration-200 text-left overflow-hidden outline-none
              active:scale-[0.995] themed-item
              {isCurrent ? 'themed-item-active' : ''}"
-        ondblclick={() => handlePlay(track, index)}
+        ondblclick={() => handlePlay(track)}
         role="button"
         tabindex="0"
     >
@@ -201,9 +199,9 @@
         color: rgb(var(--mdui-color-primary));
     }
 
-    .themed-border {
+    /* .themed-border {
         border-color: rgb(var(--mdui-color-outline-variant));
-    }
+    } */
 
     .themed-border-b {
         border-bottom: 1px solid rgb(var(--mdui-color-outline-variant));

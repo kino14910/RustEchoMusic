@@ -1,4 +1,5 @@
 export interface Track {
+    id: string
     title: string
     artist: string
     album: string
@@ -7,6 +8,7 @@ export interface Track {
     sampleRate?: number | null
     cover?: string | null
     path: string
+    url?: string
 }
 
 export interface Playlist {

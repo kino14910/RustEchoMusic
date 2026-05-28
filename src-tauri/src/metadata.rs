@@ -4,7 +4,7 @@ use lofty::prelude::*;
 use lofty::probe::Probe;
 use lofty::tag::ItemKey;
 
-use crate::models::Track;
+use crate::models::{generate_track_id, Track};
 
 pub fn parse_single_track(file_path: &Path) -> Option<Track> {
     let tagged_file = Probe::open(file_path).ok()?.read().ok()?;
@@ -47,6 +47,7 @@ pub fn parse_single_track(file_path: &Path) -> Option<Track> {
     let sample_rate = props.sample_rate();
 
     Some(Track {
+        id: generate_track_id(&file_path.to_string_lossy()),
         title,
         artist,
         album,
