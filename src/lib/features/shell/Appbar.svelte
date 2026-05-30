@@ -1,4 +1,6 @@
 <script lang="ts">
+  import SearchBar from '$lib/components/base/SearchBar.svelte'
+  import { globalSearch } from '$lib/state/search.svelte'
   import '@mdui/icons/close--rounded.js'
   import '@mdui/icons/fullscreen--rounded.js'
   import '@mdui/icons/fullscreen-exit--rounded.js'
@@ -23,7 +25,7 @@
 
   function drag(e: PointerEvent) {
     const target = e.target as HTMLElement
-    if (target.closest('div[role="button"]')) {
+    if (target.closest('div[role="button"]') || target.closest('input')) {
       return
     }
     if (e.buttons === 1) {
@@ -45,7 +47,9 @@
   </mdui-top-app-bar-title>
 
   <div class="flex-1 flex items-center justify-center">
-    <div class="max-w-md w-full"></div>
+    <div class="max-w-md w-full px-4">
+      <SearchBar bind:value={globalSearch.query} />
+    </div>
   </div>
 
   <div class="flex items-center pr-6 [-webkit-app-region:no-drag]">
