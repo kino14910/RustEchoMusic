@@ -47,10 +47,11 @@
 <mdui-navigation-drawer
     open={player.queueOpen}
     placement="right"
+    modal
     close-on-overlay-click
     close-on-esc
     onclose={() => { player.queueOpen = false }}
-    class="w-96 max-w-full flex flex-col h-full bg-[rgb(var(--mdui-color-surface-container))] border-l border-[rgb(var(--mdui-color-outline-variant))]"
+    class="mt-32 h-[calc(100vh-var(--spacing)*(24+14+20))] [&::part(panel)]:mt-20 [&::part(overlay)]:bg-transparent"
 >
     <div class="flex items-center justify-between p-4 border-b border-[rgb(var(--mdui-color-outline-variant))]">
         <div class="flex items-center gap-2">

@@ -148,7 +148,7 @@
 
 <mdui-list class="flex flex-col w-full">
     <mdui-list-subheader
-        class="flex pl-4 pr-6 text-xs uppercase tracking-wider font-semibold themed-text-secondary themed-border-b *:justify-center *:self-center"
+        class="sticky flex pl-4 pr-6 text-xs uppercase tracking-wider font-semibold themed-text-secondary themed-border-b *:justify-center *:self-center"
         noninteractive
     >
         <div class="w-12 text-center flex">#</div>

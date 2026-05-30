@@ -53,7 +53,6 @@
 
 <header class="border-b border-[rgb(var(--mdui-color-outline-variant))] pb-5">
     <Heading eyebrow="library" title="歌曲">
-        <div class="flex items-center gap-2">
             <Button
                 variant="filled"
                 disabled={filteredTracks.length === 0}
@@ -68,7 +67,6 @@
             >
                 刷新
             </Button>
-        </div>
     </Heading>
     <Filters
         bind:query

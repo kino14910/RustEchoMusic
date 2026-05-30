@@ -108,12 +108,14 @@
 
 <header class="pb-5">
     <Heading eyebrow="artist" title="艺术家">
-        <Button
-            variant="outlined"
-            onclick={() => musicLibrary.scan()}
-        >
-            刷新
-        </Button>
+        <div class="flex items-center gap-2">
+            <Button
+                variant="outlined"
+                onclick={() => musicLibrary.scan()}
+            >
+                刷新
+            </Button>
+        </div>
     </Heading>
 
     <Filters

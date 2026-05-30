@@ -31,14 +31,14 @@
     <Appbar />
     <PlayerBar />
     <NavRail />
-    <QueueDrawer />
-
     <mdui-layout-main
         class="flex flex-col h-screen w-screen overflow-hidden bg-(--controlWhite) text-(--controlBlack)"
     >
         {@render children()}
     </mdui-layout-main>
 </mdui-layout>
+
+<QueueDrawer />
 
 <style lang="postcss">
     @reference "tailwindcss";

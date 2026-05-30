@@ -32,6 +32,8 @@
     </div>
 
     {#if children}
-        {@render children()}
+        <div class="flex items-center gap-2">
+            {@render children()}
+        </div>
     {/if}
 </div>

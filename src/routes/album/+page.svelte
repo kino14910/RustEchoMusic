@@ -111,10 +111,7 @@
 
 <header class="pb-5">
     <Heading eyebrow="Albums" title="专辑">
-        <Button
-            variant="outlined"
-            onclick={() => musicLibrary.scan()}
-        >
+        <Button variant="outlined" onclick={() => musicLibrary.scan()}>
             刷新
         </Button>
     </Heading>
