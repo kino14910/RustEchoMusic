@@ -38,7 +38,7 @@
     }
 
     function handlePlay(clickedTrack: Track) {
-        player.replaceQueueAndPlay(tracks, clickedTrack.id)
+        player.replacePlaylistAndPlay(tracks, clickedTrack.id)
 
         void trackCovers.load(clickedTrack)
     }

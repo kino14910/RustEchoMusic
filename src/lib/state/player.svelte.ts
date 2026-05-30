@@ -4,18 +4,12 @@ import { recentlyPlayed } from "./recent.svelte"
 
 type PlayMode = 'list' | 'single' | 'shuffle'
 
-interface QueueSource {
-    type: 'album' | 'playlist' | 'search' | 'artist' | 'local'
-    id: string
-}
-
 class Player {
-    queue = $state<Track[]>([])
+    playlist = $state<Track[]>([])
     currentIndex = $state<number>(-1)
     playing = $state<boolean>(false)
     currentTime = $state<number>(0)
     playMode = $state<PlayMode>('list')
-    queueSource = $state<QueueSource | null>(null)
     playbackHistory: string[] = []
     #muted = $state<boolean>(false)
     #volume = $state<number>(80)
@@ -26,8 +20,8 @@ class Player {
     constructor() {}
 
     get currentTrack(): Track | null {
-        if (this.currentIndex >= 0 && this.currentIndex < this.queue.length) {
-            return this.queue[this.currentIndex]
+        if (this.currentIndex >= 0 && this.currentIndex < this.playlist.length) {
+            return this.playlist[this.currentIndex]
         }
         return null
     }
@@ -54,12 +48,11 @@ class Player {
         }
     }
 
-    replaceQueueAndPlay(tracks: Track[], targetId: string, source: QueueSource | null = null) {
+    replacePlaylistAndPlay(tracks: Track[], targetId: string) {
         if (tracks.length === 0) {
-            this.queue = []
+            this.playlist = []
             this.currentIndex = -1
             this.playing = false
-            this.queueSource = null
             this.playbackHistory = []
             this.stopPolling()
             invoke('toggle_music').catch(console.error)
@@ -71,24 +64,23 @@ class Player {
         const nextIndex = index !== -1 ? index : 0
 
         this.playbackHistory = []
-        this.queue = nextQueue
-        this.queueSource = source
+        this.playlist = nextQueue
         this.currentIndex = nextIndex
         void this.loadAndPlay()
     }
 
     appendTrack(track: Track) {
-        if (this.queue.some(t => t.id === track.id)) return
-        this.queue = [...this.queue, track]
+        if (this.playlist.some(t => t.id === track.id)) return
+        this.playlist = [...this.playlist, track]
     }
 
     insertNext(track: Track) {
-        const existingIndex = this.queue.findIndex(item => item.id === track.id)
+        const existingIndex = this.playlist.findIndex(item => item.id === track.id)
         if (existingIndex === this.currentIndex && this.currentIndex !== -1) {
             return
         }
 
-        let nextQueue = [...this.queue]
+        let nextQueue = [...this.playlist]
         let nextIndex = this.currentIndex
 
         if (existingIndex !== -1) {
@@ -99,28 +91,27 @@ class Player {
         }
 
         if (nextQueue.length === 0 || nextIndex === -1) {
-            this.queue = [track]
+            this.playlist = [track]
             this.currentIndex = 0
             return
         }
 
         nextQueue.splice(nextIndex + 1, 0, track)
-        this.queue = nextQueue
+        this.playlist = nextQueue
         this.currentIndex = nextIndex
     }
 
     removeTrack(id: string) {
-        const removeIndex = this.queue.findIndex(t => t.id === id)
+        const removeIndex = this.playlist.findIndex(t => t.id === id)
         if (removeIndex === -1) return
 
         const isCurrent = removeIndex === this.currentIndex
-        const nextQueue = this.queue.filter(t => t.id !== id)
+        const nextQueue = this.playlist.filter(t => t.id !== id)
 
         if (nextQueue.length === 0) {
-            this.queue = []
+            this.playlist = []
             this.currentIndex = -1
             this.playing = false
-            this.queueSource = null
             this.playbackHistory = []
             this.stopPolling()
             invoke('toggle_music').catch(console.error)
@@ -129,7 +120,7 @@ class Player {
 
         if (isCurrent) {
             const nextIndex = Math.min(removeIndex, nextQueue.length - 1)
-            this.queue = nextQueue
+            this.playlist = nextQueue
             this.currentIndex = nextIndex
             void this.loadAndPlay()
             return
@@ -139,36 +130,36 @@ class Player {
         if (removeIndex < nextIndex) {
             nextIndex--
         }
-        this.queue = nextQueue
+        this.playlist = nextQueue
         this.currentIndex = nextIndex
     }
 
     private getNextIndex(): number {
-        if (this.queue.length <= 1) return 0
+        if (this.playlist.length <= 1) return 0
         if (this.playMode === 'shuffle') {
             let nextIndex = this.currentIndex
             while (nextIndex === this.currentIndex) {
-                nextIndex = Math.floor(Math.random() * this.queue.length)
+                nextIndex = Math.floor(Math.random() * this.playlist.length)
             }
             return nextIndex
         }
-        return this.currentIndex >= this.queue.length - 1 ? 0 : this.currentIndex + 1
+        return this.currentIndex >= this.playlist.length - 1 ? 0 : this.currentIndex + 1
     }
 
     private getPrevIndex(): number {
-        if (this.queue.length <= 1) return 0
+        if (this.playlist.length <= 1) return 0
         if (this.playMode === 'shuffle') {
             let prevIndex = this.currentIndex
             while (prevIndex === this.currentIndex) {
-                prevIndex = Math.floor(Math.random() * this.queue.length)
+                prevIndex = Math.floor(Math.random() * this.playlist.length)
             }
             return prevIndex
         }
-        return this.currentIndex <= 0 ? this.queue.length - 1 : this.currentIndex - 1
+        return this.currentIndex <= 0 ? this.playlist.length - 1 : this.currentIndex - 1
     }
 
     next() {
-        if (this.queue.length === 0) return
+        if (this.playlist.length === 0) return
         const current = this.currentTrack
         if (current) {
             this.playbackHistory.push(current.id)
@@ -178,10 +169,10 @@ class Player {
     }
 
     prev() {
-        if (this.queue.length === 0) return
+        if (this.playlist.length === 0) return
         if (this.playbackHistory.length > 0) {
             const lastId = this.playbackHistory.pop()
-            const index = this.queue.findIndex(t => t.id === lastId)
+            const index = this.playlist.findIndex(t => t.id === lastId)
             if (index !== -1) {
                 this.currentIndex = index
                 void this.loadAndPlay()

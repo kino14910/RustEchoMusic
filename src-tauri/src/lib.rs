@@ -2,34 +2,21 @@ mod audio;
 mod commands;
 mod metadata;
 mod models;
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
+    Emitter, Manager,
+};
 
 use commands::library::{
-    get_track_cover,
-    save_music_library,
-    load_music_library,
-    execute_scan,
-    scan_music_directories,
+    execute_scan, get_track_cover, load_music_library, save_music_library, scan_music_directories,
 };
 
-use commands::playback::{
-    current_time,
-    play_music,
-    set_current_time,
-    set_volume,
-    toggle_music,
-};
+use commands::playback::{current_time, play_music, set_current_time, set_volume, toggle_music};
 
-use commands::recent::{
-    add_recently_played,
-    clear_recently_played,
-    load_recently_played,
-};
+use commands::recent::{add_recently_played, clear_recently_played, load_recently_played};
 
-use commands::settings::{
-    load_settings,
-    save_settings,
-};
-use tauri::Emitter;
+use commands::settings::{load_settings, save_settings};
 
 pub fn init_startup_scan(app_handle: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move {
@@ -48,6 +35,37 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&quit_i])?;
+
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app: &tauri::AppHandle, event| match event.id.as_ref() {
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| match event {
+                    TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        ..
+                    } => {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.unminimize();
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    _ => {
+                        println!("unhandled event {event:?}");
+                    }
+                })
+                .build(app)?;
+
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 if let Ok(settings) = load_settings(handle.clone()).await {

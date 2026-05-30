@@ -43,7 +43,7 @@
     function playAll() {
         if (filteredTracks.length === 0) return
 
-        player.replaceQueueAndPlay(filteredTracks, filteredTracks[0].id)
+        player.replacePlaylistAndPlay(filteredTracks, filteredTracks[0].id)
     }
 </script>
 

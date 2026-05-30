@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import type { Track } from '../types/music'
 import { settings } from './settings.svelte'
 
@@ -7,7 +8,22 @@ class MusicLibrary {
     isLoading = $state(false)
     error = $state<string | null>(null)
 
+    initialized = false
+
     private refreshPromise: Promise<Track[]> | null = null
+
+    constructor() {
+        void this.setupListener()
+    }
+
+    private async setupListener() {
+        await listen<Track[]>(
+            'library:refreshed',
+            event => {
+                this.tracks = event.payload
+            },
+        )
+    }
 
     async load(options: { force?: boolean } = {}): Promise<Track[]> {
         const { force = false } = options

@@ -2,8 +2,6 @@
     import Button from '$lib/components/base/Button.svelte'
     import Heading from '$lib/components/base/Heading.svelte'
     import Select from '$lib/components/base/Select.svelte'
-    import { registerBuiltinExtensions } from '$lib/extensions/builtin'
-    import { extensionRegistry } from '$lib/extensions/registry.svelte'
     import SettingsListItem from '$lib/features/settings/SettingsListItem.svelte'
     import SettingsRow from '$lib/features/settings/SettingsRow.svelte'
     import SettingsSection from '$lib/features/settings/SettingsSection.svelte'
@@ -24,7 +22,6 @@
     ]
 
     onMount(() => {
-        registerBuiltinExtensions()
         void settings.load()
     })
 
@@ -140,29 +137,6 @@
                     </div>
                 {/if}
             </div>
-        </SettingsSection>
-
-        <SettingsSection title="扩展" contentClass="mt-4 grid gap-3">
-            {#each extensionRegistry.extensions as extension (extension.id)}
-                <SettingsListItem
-                    title={extension.name}
-                    description={extension.description}
-                >
-                    <mdui-switch
-                        checked={extension.enabled !== false}
-                        onchange={(event: Event) => {
-                            const target =
-                                event.currentTarget as HTMLElement & {
-                                    checked: boolean
-                                }
-                            extensionRegistry.setEnabled(
-                                extension.id,
-                                target.checked,
-                            )
-                        }}
-                    ></mdui-switch>
-                </SettingsListItem>
-            {/each}
         </SettingsSection>
 
         {#if settings.error}
