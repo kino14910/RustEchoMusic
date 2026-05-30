@@ -1,8 +1,18 @@
 import { invoke } from "@tauri-apps/api/core"
+import { load } from "@tauri-apps/plugin-store"
 import type { Track } from "../types/music"
 import { recentlyPlayed } from "./recent.svelte"
 
 type PlayMode = 'list' | 'single' | 'shuffle'
+
+interface PersistedState {
+    playlist: Track[]
+    currentIndex: number
+    playMode: PlayMode
+    volume: number
+}
+
+const STORE_NAME = "player-state.json"
 
 class Player {
     playlist = $state<Track[]>([])
@@ -10,6 +20,7 @@ class Player {
     playing = $state<boolean>(false)
     currentTime = $state<number>(0)
     playMode = $state<PlayMode>('list')
+    queueOpen = $state<boolean>(false)
     playbackHistory: string[] = []
     #muted = $state<boolean>(false)
     #volume = $state<number>(80)
@@ -33,6 +44,7 @@ class Player {
             this.#muted = false
         }
         invoke('set_volume', { volume }).catch(console.error)
+        void this.persist()
     }
 
     get muted() { return this.#muted }
@@ -67,6 +79,7 @@ class Player {
         this.playlist = nextQueue
         this.currentIndex = nextIndex
         void this.loadAndPlay()
+        void this.persist()
     }
 
     appendTrack(track: Track) {
@@ -132,6 +145,24 @@ class Player {
         }
         this.playlist = nextQueue
         this.currentIndex = nextIndex
+    }
+
+    playTrackInQueue(index: number) {
+        if (index < 0 || index >= this.playlist.length) return
+        this.currentIndex = index
+        void this.loadAndPlay()
+        void this.persist()
+    }
+
+    cyclePlayMode() {
+        const modes: PlayMode[] = ['list', 'single', 'shuffle']
+        const currentModeIndex = modes.indexOf(this.playMode)
+        this.playMode = modes[(currentModeIndex + 1) % modes.length]
+        void this.persist()
+    }
+
+    toggleQueue() {
+        this.queueOpen = !this.queueOpen
     }
 
     private getNextIndex(): number {
@@ -202,6 +233,45 @@ class Player {
         await invoke('set_current_time', { time })
         this.currentTime = time
         if (this.playing) this.startPolling()
+    }
+
+    async loadState() {
+        try {
+            const store = await load(STORE_NAME)
+            const playlist = await store.get<Track[]>("playlist")
+            const currentIndex = await store.get<number>("currentIndex")
+            const playMode = await store.get<PlayMode>("playMode")
+            const volume = await store.get<number>("volume")
+
+            if (playlist && playlist.length > 0) {
+                this.playlist = playlist
+            }
+            if (typeof currentIndex === "number" && currentIndex >= 0) {
+                this.currentIndex = currentIndex
+            }
+            if (playMode) {
+                this.playMode = playMode
+            }
+            if (typeof volume === "number") {
+                this.#volume = volume
+                invoke('set_volume', { volume }).catch(console.error)
+            }
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
+    private async persist() {
+        try {
+            const store = await load(STORE_NAME)
+            await store.set("playlist", this.playlist.map(t => ({ ...t, cover: null })))
+            await store.set("currentIndex", this.currentIndex)
+            await store.set("playMode", this.playMode)
+            await store.set("volume", this.#volume)
+            await store.save()
+        } catch (err) {
+            console.error(err)
+        }
     }
 
     private async loadAndPlay() {

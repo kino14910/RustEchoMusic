@@ -12,6 +12,11 @@
     let currentCover = $state<string | null>(null)
 
     let volumeIcon = $derived(getVolumeIcon(player.volume, player.muted))
+    let playModeIcon = $derived.by(() => {
+        if (player.playMode === 'single') return 'repeat_one--rounded'
+        if (player.playMode === 'shuffle') return 'shuffle--rounded'
+        return 'repeat--rounded'
+    })
 
     function getVolumeIcon(volume: number, muted: boolean) {
         if (muted) return 'volume_off--rounded'
@@ -105,13 +110,23 @@
 {/snippet}
 
 {#snippet volumeControls()}
-    <div class="flex flex-1 items-center min-w-37.5 justify-end">
-        <IconButton icon="playlist_play--rounded" />
+    <div class="flex flex-1 items-center min-w-37.5 justify-end gap-1">
+        <IconButton
+            icon={playModeIcon}
+            onclick={() => player.cyclePlayMode()}
+            class="opacity-70 hover:opacity-100"
+        />
+
+        <IconButton
+            icon="playlist_play--rounded"
+            onclick={() => player.toggleQueue()}
+            class={player.queueOpen ? 'text-[rgb(var(--mdui-color-primary))]' : 'opacity-70 hover:opacity-100'}
+        />
 
         <IconButton
             icon={volumeIcon}
             onclick={() => (player.muted = !player.muted)}
-            class="text-lg opacity-70"
+            class="text-lg opacity-70 hover:opacity-100"
         />
 
         <Slider bind:value={player.volume} />

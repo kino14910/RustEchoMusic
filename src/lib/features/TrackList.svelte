@@ -1,4 +1,5 @@
 <script lang="ts">
+    import PlayingIndicator from '$lib/components/base/PlayingIndicator.svelte'
     import { trackCovers } from '$lib/state/covers.svelte'
     import { player } from '$lib/state/player.svelte'
     import type { Track } from '$lib/types'
@@ -44,26 +45,12 @@
     }
 </script>
 
-{#snippet playingIndicator()}
-    <div class="flex items-end gap-0.5 h-3.5">
-        <span
-            class="w-0.5 themed-bar h-full animate-[bounce_0.8s_infinite_alternate]"
-        ></span>
-        <span
-            class="w-0.5 themed-bar h-full animate-[bounce_0.8s_infinite_alternate_0.2s]"
-        ></span>
-        <span
-            class="w-0.5 themed-bar h-full animate-[bounce_0.8s_infinite_alternate_0.4s]"
-        ></span>
-    </div>
-{/snippet}
-
 {#snippet trackIndex(index: number, isCurrent: boolean)}
     <div
         class="w-12 flex justify-center items-center text-sm themed-text-secondary z-10 shrink-0"
     >
         {#if isCurrent && player.playing}
-            {@render playingIndicator()}
+            <PlayingIndicator/>
         {:else}
             <span
                 class={isCurrent
@@ -214,11 +201,7 @@
     .themed-surface-high {
         background-color: rgb(var(--mdui-color-surface-container-high));
     }
-
-    .themed-bar {
-        background-color: rgb(var(--mdui-color-primary));
-    }
-
+    
     .themed-item {
         background-color: transparent;
         border: 1px solid transparent;

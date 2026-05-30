@@ -1,8 +1,10 @@
 <script lang="ts">
     import PlayerBar from '$lib/features/PlayerBar.svelte'
+    import QueueDrawer from '$lib/features/QueueDrawer.svelte'
     import Appbar from '$lib/features/shell/Appbar.svelte'
     import NavRail from '$lib/features/shell/NavRail.svelte'
     import { musicLibrary } from '$lib/state/library.svelte'
+    import { player } from '$lib/state/player.svelte'
     import { settings } from '$lib/state/settings.svelte'
     import 'mdui'
     import 'mdui/mdui.css'
@@ -14,6 +16,7 @@
     onMount(() => {
         void settings.load()
         void musicLibrary.load()
+        void player.loadState()
     })
 
     $effect(() => {
@@ -28,6 +31,7 @@
     <Appbar />
     <PlayerBar />
     <NavRail />
+    <QueueDrawer />
 
     <mdui-layout-main
         class="flex flex-col h-screen w-screen overflow-hidden bg-(--controlWhite) text-(--controlBlack)"
