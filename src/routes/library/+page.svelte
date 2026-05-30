@@ -74,7 +74,7 @@
                 刷新
             </Button>
         </Heading>
-        <div class="flex px-2 justify-end gap-16 items-center">
+        <div class="flex px-2 gap-16 justify-end items-center">
             <div class="max-w-md">
                 <SearchBar bind:value={searchQuery} />
             </div>

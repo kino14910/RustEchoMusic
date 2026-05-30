@@ -7,6 +7,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     libraryDirs: [],
     scanOnStartup: false,
     reduceMotion: false,
+    useAlbumArtistGrouping: false,
 }
 
 class SettingsState {

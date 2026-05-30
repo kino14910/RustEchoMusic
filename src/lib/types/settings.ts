@@ -7,4 +7,5 @@ export interface AppSettings {
     libraryDirs: string[]
     scanOnStartup: boolean
     reduceMotion: boolean
+    useAlbumArtistGrouping: boolean
 }

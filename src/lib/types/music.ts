@@ -9,6 +9,7 @@ export interface Track {
     cover?: string | null
     path: string
     url?: string
+    tags?: string[]
 }
 
 export interface Playlist {
@@ -31,8 +32,9 @@ export interface Artist {
 export interface Album {
     id: string
     title: string
+    artist: string
     cover?: string | null
-    trackCount: number
     tracks: Track[]
+    trackCount: number
     representativeTrack: Track
 }

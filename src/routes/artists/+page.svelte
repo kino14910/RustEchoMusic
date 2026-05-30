@@ -13,70 +13,22 @@
     import 'mdui/components/list.js'
 
     let searchQuery = $state('')
-    let selectedArtist = $state<Artist | null>(null)
+    let selectedArtistId = $state<string | null>(null)
     let windowWidth = $state(1024)
 
     const isMobile = $derived(windowWidth < 768)
+    const selectedArtist: Artist | undefined = $derived(
+        selectedArtistId === null ? undefined : musicLibrary.getArtist(selectedArtistId),
+    )
 
     const collator = new Intl.Collator('zh-Hans-CN', {
         numeric: true,
         sensitivity: 'base',
     })
 
-    function createArtistId(name: string) {
-        return encodeURIComponent(name)
-    }
-
-    function buildArtists(tracks: Track[]): Artist[] {
-        const artistMap = new Map<
-            string,
-            {
-                name: string
-                tracks: Track[]
-                albums: Set<string>
-                cover?: string | null
-            }
-        >()
-
-        for (const track of tracks) {
-            const name = track.artist?.trim() || '未知歌手'
-            const key = name.toLowerCase()
-
-            if (!artistMap.has(key)) {
-                artistMap.set(key, {
-                    name,
-                    tracks: [],
-                    albums: new Set(),
-                    cover: track.cover ?? null,
-                })
-            }
-
-            const artist = artistMap.get(key)!
-            artist.tracks.push(track)
-
-            if (track.album?.trim()) {
-                artist.albums.add(track.album.trim())
-            }
-
-            if (!artist.cover && track.cover) {
-                artist.cover = track.cover
-            }
-        }
-
-        return Array.from(artistMap.values()).map(artist => ({
-            id: createArtistId(artist.name),
-            name: artist.name,
-            cover: artist.cover,
-            trackCount: artist.tracks.length,
-            albumCount: artist.albums.size,
-            tracks: artist.tracks,
-        }))
-    }
-
-    const artists = $derived(buildArtists(musicLibrary.tracks))
-
     const filteredArtists = $derived.by(() => {
         const keyword = searchQuery.trim().toLowerCase()
+        const artists = musicLibrary.artists
         const list = keyword
             ? artists.filter(artist =>
                   artist.name.toLowerCase().includes(keyword),
@@ -118,7 +70,7 @@
         </div>
     {:else if isMobile}
         <div class="flex-1 overflow-hidden min-h-0 flex flex-col">
-            {#if selectedArtist === null}
+            {#if selectedArtist === undefined}
                 <div class="flex-1 overflow-y-auto pb-8">
                     {#if filteredArtists.length === 0}
                         <div
@@ -134,11 +86,11 @@
                                     headline={artist.name}
                                     description={`${artist.trackCount} 首歌曲 · ${artist.albumCount} 张专辑`}
                                     onclick={() => {
-                                        selectedArtist = artist
+                                        selectedArtistId = artist.id
                                     }}
                                     onkeydown={(e: KeyboardEvent) =>
                                         (e.key === 'Enter' || e.key === ' ') &&
-                                        (selectedArtist = artist)}
+                                        (selectedArtistId = artist.id)}
                                     role="button"
                                     tabindex="0"
                                 >
@@ -170,7 +122,7 @@
                         <IconButton
                             icon="arrow_back--rounded"
                             onclick={() => {
-                                selectedArtist = null
+                                selectedArtistId = null
                             }}
                         />
                         <div class="flex-1 min-w-0">
@@ -188,7 +140,7 @@
                         </div>
                         <Button
                             variant="filled"
-                            onclick={() => playAll(selectedArtist!.tracks)}
+                            onclick={() => playAll(selectedArtist.tracks)}
                             >播放全部</Button
                         >
                     </div>
@@ -201,7 +153,7 @@
     {:else}
         <div class="flex-1 flex overflow-hidden min-h-0">
             <div
-                class="flex-1 shrink-0 border-r border-[rgb(var(--mdui-color-outline-variant))] overflow-y-auto pb-8"
+                class="flex-2 shrink-0 border-r border-[rgb(var(--mdui-color-outline-variant))] overflow-y-auto pb-8"
             >
                 {#if filteredArtists.length === 0}
                     <div
@@ -217,14 +169,14 @@
                                 headline={artist.name}
                                 description={`${artist.trackCount} 首歌曲 · ${artist.albumCount} 张专辑`}
                                 onclick={() => {
-                                    selectedArtist = artist
+                                    selectedArtistId = artist.id
                                 }}
                                 onkeydown={(e: KeyboardEvent) =>
                                     (e.key === 'Enter' || e.key === ' ') &&
-                                    (selectedArtist = artist)}
+                                    (selectedArtistId = artist.id)}
                                 role="button"
                                 tabindex="0"
-                                active={selectedArtist?.id === artist.id}
+                                active={selectedArtistId === artist.id}
                             >
                                 {#if artist.cover}
                                     <img
@@ -247,7 +199,7 @@
                 {/if}
             </div>
             <div class="flex-1 flex flex-col overflow-hidden min-h-0">
-                {#if selectedArtist === null}
+                {#if selectedArtist === undefined}
                     <div
                         class="flex-1 flex flex-col items-center justify-center text-[rgb(var(--mdui-color-on-surface-variant))]"
                     >
@@ -273,12 +225,12 @@
                         </div>
                         <Button
                             variant="filled"
-                            onclick={() => playAll(selectedArtist!.tracks)}
+                            onclick={() => playAll(selectedArtist.tracks)}
                             >播放全部</Button
                         >
                     </div>
                     <div class="flex-1 overflow-y-auto pb-8">
-                        <TrackList tracks={selectedArtist.tracks} columns={['index', 'title', 'duration']}/>
+                        <TrackList tracks={selectedArtist.tracks} columns={['title', 'duration']}/>
                     </div>
                 {/if}
             </div>
