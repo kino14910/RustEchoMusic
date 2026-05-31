@@ -47,7 +47,7 @@
   </mdui-top-app-bar-title>
 
   <div class="flex-1 flex items-center justify-center">
-    <div class="max-w-md w-full px-4">
+    <div class="max-w-md px-4">
       <SearchBar bind:value={globalSearch.query} />
     </div>
   </div>

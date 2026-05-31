@@ -28,7 +28,152 @@ class Player {
     #pollTimer: any = null
     private loadToken = 0
 
-    constructor() {}
+    constructor() {
+        this.setupMediaSession()
+    }
+
+    private setupMediaSession() {
+        if (!('mediaSession' in navigator)) {
+            return
+        }
+
+        navigator.mediaSession.setActionHandler(
+            'play',
+            () => this.resume(),
+        )
+
+        navigator.mediaSession.setActionHandler(
+            'pause',
+            () => this.pause(),
+        )
+
+        navigator.mediaSession.setActionHandler(
+            'previoustrack',
+            () => this.prev(),
+        )
+
+        navigator.mediaSession.setActionHandler(
+            'nexttrack',
+            () => this.next(),
+        )
+
+        navigator.mediaSession.setActionHandler(
+            'seekto',
+            details => {
+                const seekTime = details.seekTime
+                if (seekTime == null) {
+                    return
+                }
+                void this.seek(seekTime)
+            },
+        )
+
+        navigator.mediaSession.setActionHandler(
+            'seekforward',
+            () => {
+                if (!this.currentTrack) {
+                    return
+                }
+                void this.seek(
+                    Math.min(
+                        this.currentTime + 10,
+                        this.currentTrack.duration,
+                    ),
+                )
+            },
+        )
+
+        navigator.mediaSession.setActionHandler(
+            'seekbackward',
+            () => {
+                if (!this.currentTrack) {
+                    return
+                }
+                void this.seek(
+                    Math.max(
+                        this.currentTime - 10,
+                        0,
+                    ),
+                )
+            },
+        )
+    }
+
+    private updateMediaMetadata() {
+        if (
+            !('mediaSession' in navigator) ||
+            !this.currentTrack
+        ) {
+            return
+        }
+
+        navigator.mediaSession.metadata =
+            new MediaMetadata({
+                title: this.currentTrack.title,
+                artist:
+                    this.currentTrack.artist ??
+                    '未知歌手',
+                album:
+                    this.currentTrack.album ??
+                    '未知专辑',
+                artwork: this.buildArtwork(),
+            })
+    }
+
+    private buildArtwork() {
+        const cover = this.currentTrack?.cover
+        if (!cover) {
+            return []
+        }
+        return [
+            {
+                src: cover
+            },
+        ]
+    }
+
+    private updatePlaybackState() {
+        if (!('mediaSession' in navigator)) {
+            return
+        }
+
+        navigator.mediaSession.playbackState =
+            this.playing
+                ? 'playing'
+                : 'paused'
+    }
+
+    private updatePositionState() {
+        const track = this.currentTrack
+        if (
+            !track ||
+            !('mediaSession' in navigator) ||
+            !('setPositionState' in navigator.mediaSession)
+        ) {
+            return
+        }
+
+        navigator.mediaSession.setPositionState({
+            duration: track.duration,
+            playbackRate: this.playing ? 1 : 0,
+            position: this.currentTime,
+        })
+    }
+
+    private syncMediaSession() {
+        this.updateMediaMetadata()
+        this.updatePlaybackState()
+        this.updatePositionState()
+    }
+
+    private clearMediaSession() {
+        if (!('mediaSession' in navigator)) {
+            return
+        }
+
+        navigator.mediaSession.metadata = null
+        navigator.mediaSession.playbackState = 'none'
+    }
 
     get currentTrack(): Track | null {
         if (this.currentIndex >= 0 && this.currentIndex < this.playlist.length) {
@@ -66,6 +211,7 @@ class Player {
             this.currentIndex = -1
             this.playing = false
             this.playbackHistory = []
+            this.clearMediaSession()
             this.stopPolling()
             invoke('toggle_music').catch(console.error)
             return
@@ -126,6 +272,7 @@ class Player {
             this.currentIndex = -1
             this.playing = false
             this.playbackHistory = []
+            this.clearMediaSession()
             this.stopPolling()
             invoke('toggle_music').catch(console.error)
             return
@@ -189,6 +336,15 @@ class Player {
         return this.currentIndex <= 0 ? this.playlist.length - 1 : this.currentIndex - 1
     }
 
+    private storePromise: ReturnType<typeof load> | null = null
+
+    private async getStore() {
+        if (!this.storePromise) {
+            this.storePromise = load(STORE_NAME)
+        }
+        return this.storePromise
+    }
+
     next() {
         if (this.playlist.length === 0) return
         const current = this.currentTrack
@@ -214,17 +370,33 @@ class Player {
         void this.loadAndPlay()
     }
 
-    toggle = async () => {
+    resume = async () => {
         try {
-            const isPlayingNow = await invoke<boolean>('toggle_music')
-            this.playing = isPlayingNow
-            if (this.playing) {
-                this.startPolling()
-            } else {
-                this.stopPolling()
-            }
+            await invoke('resume_music')
+            this.playing = true
+            this.syncMediaSession()
+            this.startPolling()
         } catch (err) {
             console.error(err)
+        }
+    }
+
+    pause = async () => {
+        try {
+            await invoke('pause_music')
+            this.playing = false
+            this.syncMediaSession()
+            this.stopPolling()
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
+    toggle = async () => {
+        if (this.playing) {
+            await this.pause()
+        } else {
+            await this.resume()
         }
     }
 
@@ -232,7 +404,10 @@ class Player {
         this.stopPolling()
         await invoke('set_current_time', { time })
         this.currentTime = time
-        if (this.playing) this.startPolling()
+        this.updatePositionState()
+        if (this.playing) {
+            this.startPolling()
+        }
     }
 
     async loadState() {
@@ -273,6 +448,12 @@ class Player {
             console.error(err)
         }
     }
+    
+    private onTrackStarted(track: Track) {
+        this.playing = true
+        this.syncMediaSession()
+        recentlyPlayed.add(track)
+    }
 
     private async loadAndPlay() {
         const track = this.currentTrack
@@ -293,8 +474,7 @@ class Player {
                 return
             }
 
-            this.playing = true
-            recentlyPlayed.add(track)
+            this.onTrackStarted(track)
             this.startPolling()
         } catch (err) {
             if (currentToken === this.loadToken) {

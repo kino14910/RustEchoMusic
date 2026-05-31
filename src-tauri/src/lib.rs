@@ -2,6 +2,7 @@ mod audio;
 mod commands;
 mod metadata;
 mod models;
+
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
@@ -12,7 +13,7 @@ use commands::library::{
     execute_scan, get_track_cover, load_music_library, save_music_library, scan_music_directories,
 };
 
-use commands::playback::{current_time, play_music, set_current_time, set_volume, toggle_music};
+use commands::playback::{current_time, play_music, set_current_time, set_volume, resume_music, pause_music, toggle_music};
 
 use commands::recent::{add_recently_played, clear_recently_played, load_recently_played};
 
@@ -36,33 +37,39 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .setup(|app| {
-            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&quit_i])?;
+            let settings_item = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&settings_item, &quit_item])?;
 
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app: &tauri::AppHandle, event| match event.id.as_ref() {
+                    "settings" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.emit("tray:navigate", "settings");
+                            let _ = window.unminimize();
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
                     "quit" => {
                         app.exit(0);
                     }
                     _ => {}
                 })
-                .on_tray_icon_event(|tray, event| match event {
-                    TrayIconEvent::Click {
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
                         button: MouseButton::Left,
                         ..
-                    } => {
+                    } = event {
                         let app = tray.app_handle();
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.unminimize();
                             let _ = window.show();
                             let _ = window.set_focus();
                         }
-                    }
-                    _ => {
-                        println!("unhandled event {event:?}");
                     }
                 })
                 .build(app)?;
@@ -86,6 +93,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             play_music,
+            resume_music,
+            pause_music,
             toggle_music,
             current_time,
             set_current_time,

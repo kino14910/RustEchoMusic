@@ -2,7 +2,7 @@
   import '@mdui/icons/close--rounded.js'
   import '@mdui/icons/search--rounded.js'
 
-  let { value = $bindable('') } = $props()
+  let { value = $bindable(''), placeholder="搜索歌曲、歌手、专辑..." } = $props()
 </script>
 
 <div
@@ -14,7 +14,7 @@
   <mdui-icon-search--rounded class="text-[rgb(var(--mdui-color-on-surface-variant))] text-base shrink-0"></mdui-icon-search--rounded>
   <input
     type="text"
-    placeholder="搜索歌曲、歌手、专辑..."
+    {placeholder}
     bind:value={value}
     class="flex-1 h-full bg-transparent border-none outline-none text-sm text-[rgb(var(--mdui-color-on-surface))] placeholder-[rgb(var(--mdui-color-on-surface-variant))]"
   />

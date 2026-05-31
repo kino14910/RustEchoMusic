@@ -47,6 +47,34 @@ pub async fn play_music(full_path: &str) -> Result<String, String> {
 
     Ok(format!("Playing music: {}", full_path))
 }
+#[command]
+pub async fn resume_music() -> Result<(), String> {
+    let state = get_audio_state()
+        .lock()
+        .map_err(|_| "Failed to lock audio state")?;
+
+    if let Some(ref media) = state.media {
+        media.play();
+        Ok(())
+    } else {
+        Err("No media available".into())
+    }
+}
+
+#[command]
+pub async fn pause_music() -> Result<(), String> {
+    let state = get_audio_state()
+        .lock()
+        .map_err(|_| "Failed to lock audio state")?;
+
+    if let Some(ref media) = state.media {
+        media.pause();
+        Ok(())
+    } else {
+        Err("No media available".into())
+    }
+}
+
 
 #[command]
 pub async fn toggle_music() -> Result<bool, String> {

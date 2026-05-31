@@ -11,12 +11,25 @@
     import { onMount } from 'svelte'
     import '../app.css'
 
+    import { goto } from '$app/navigation'
+    import { listen } from '@tauri-apps/api/event'
+
     let { children } = $props()
 
     onMount(() => {
         void settings.load()
         void musicLibrary.load()
         void player.loadState()
+
+        const unlisten = listen<string>('tray:navigate', event => {
+            if (event.payload === 'settings') {
+                goto('/settings')
+            }
+        })
+
+        return () => {
+            unlisten.then(fn => fn())
+        }
     })
 
     $effect(() => {
