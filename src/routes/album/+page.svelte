@@ -1,8 +1,10 @@
 <script lang="ts">
-    import Button from '$lib/components/base/Button.svelte'
     import Heading from '$lib/components/base/Heading.svelte'
     import IconButton from '$lib/components/base/IconButton.svelte'
     import SearchBar from '$lib/components/base/SearchBar.svelte'
+    import MediaGrid, {
+        type MediaGridItem,
+    } from '$lib/components/media/MediaGrid.svelte'
     import TrackList from '$lib/features/TrackList.svelte'
     import { trackCovers } from '$lib/state/covers.svelte'
     import { musicLibrary } from '$lib/state/library.svelte'
@@ -10,6 +12,8 @@
     import { settings } from '$lib/state/settings.svelte'
     import type { Album, Track } from '$lib/types'
 
+    import '@mdui/icons/arrow-back.js'
+    import '@mdui/icons/play-arrow.js'
     import 'mdui/components/circular-progress.js'
     import 'mdui/components/list-item.js'
     import 'mdui/components/list.js'
@@ -45,6 +49,17 @@
         return [...list].sort((a, b) => collator.compare(a.title, b.title))
     })
 
+    const albumGridItems = $derived(
+        filteredAlbums.map(album => ({
+            id: album.id,
+            title: album.title,
+            subtitle: `${album.trackCount} 首歌曲`,
+            image:
+                trackCovers.get(album.representativeTrack) ?? album.cover,
+            shape: 'square' as const,
+        })),
+    )
+
     $effect(() => {
         for (const album of filteredAlbums) {
             void trackCovers.load(album.representativeTrack)
@@ -54,6 +69,23 @@
     function playAll(tracks: Track[]) {
         if (tracks.length === 0) return
         player.replacePlaylistAndPlay(tracks, tracks[0].id)
+    }
+
+    function selectAlbumItem(item: MediaGridItem) {
+        const album = musicLibrary.getAlbum(String(item.id))
+        if (album === undefined) return
+
+        selectedAlbumId = album.id
+    }
+
+    function playAlbumItem(item: MediaGridItem, event: Event) {
+        event.preventDefault()
+        event.stopPropagation()
+
+        const album = musicLibrary.getAlbum(String(item.id))
+        if (album === undefined) return
+
+        playAll(album.tracks)
     }
 
     async function handleAlbumArtistGroupingChange(event: Event) {
@@ -180,11 +212,6 @@
                                 {selectedAlbum.trackCount} 首歌曲
                             </p>
                         </div>
-                        <Button
-                            variant="filled"
-                            onclick={() => playAll(selectedAlbum.tracks)}
-                            >播放全部</Button
-                        >
                     </div>
                     <div class="flex-1 overflow-y-auto pb-8">
                         <TrackList tracks={selectedAlbum.tracks} />
@@ -195,53 +222,16 @@
     {:else}
         <div class="flex-1 flex overflow-hidden min-h-0">
             <div
-                class="flex-2 shrink-0 border-r border-[rgb(var(--mdui-color-outline-variant))] overflow-y-auto pb-8"
+                class="flex-2 shrink-0 border-r border-[rgb(var(--mdui-color-outline-variant))] overflow-y-auto pb-8 pr-4"
             >
-                {#if filteredAlbums.length === 0}
-                    <div
-                        class="flex flex-col items-center justify-center h-64 text-[rgb(var(--mdui-color-on-surface-variant))]"
-                    >
-                        <span class="text-4xl mb-2">🎵</span>
-                        <span class="text-sm">没有找到专辑</span>
-                    </div>
-                {:else}
-                    <mdui-list>
-                        {#each filteredAlbums as album (album.id)}
-                            {@const cover =
-                                trackCovers.get(album.representativeTrack) ??
-                                album.cover}
-                            <mdui-list-item
-                                headline={album.title}
-                                description={`${album.trackCount} 首歌曲`}
-                                onclick={() => {
-                                    selectedAlbumId = album.id
-                                }}
-                                onkeydown={(e: KeyboardEvent) =>
-                                    (e.key === 'Enter' || e.key === ' ') &&
-                                    (selectedAlbumId = album.id)}
-                                role="button"
-                                tabindex="0"
-                                active={selectedAlbumId === album.id}
-                            >
-                                {#if cover}
-                                    <img
-                                        src={cover}
-                                        slot="icon"
-                                        class="w-10 h-10 rounded object-cover shrink-0"
-                                        alt=""
-                                    />
-                                {:else}
-                                    <div
-                                        slot="icon"
-                                        class="w-10 h-10 rounded bg-[rgb(var(--mdui-color-surface-container-highest))] flex items-center justify-center text-lg shrink-0"
-                                    >
-                                        🎵
-                                    </div>
-                                {/if}
-                            </mdui-list-item>
-                        {/each}
-                    </mdui-list>
-                {/if}
+                <MediaGrid
+                    items={albumGridItems}
+                    selectedId={selectedAlbumId}
+                    onselect={selectAlbumItem}
+                    onplay={playAlbumItem}
+                    emptyTitle="没有找到专辑"
+                    emptyDescription="尝试调整搜索关键词"
+                />
             </div>
             <div class="flex-1 flex flex-col overflow-hidden min-h-0">
                 {#if selectedAlbum === undefined}
@@ -252,27 +242,6 @@
                         <span class="text-sm">选择一个专辑以查看歌曲</span>
                     </div>
                 {:else}
-                    <div
-                        class="flex items-center justify-between p-4 border-b border-[rgb(var(--mdui-color-outline-variant))] shrink-0"
-                    >
-                        <div>
-                            <h2
-                                class="text-lg font-semibold text-[rgb(var(--mdui-color-on-surface))]"
-                            >
-                                {selectedAlbum.title}
-                            </h2>
-                            <p
-                                class="text-xs text-[rgb(var(--mdui-color-on-surface-variant))]"
-                            >
-                                {selectedAlbum.trackCount} 首歌曲
-                            </p>
-                        </div>
-                        <Button
-                            variant="filled"
-                            onclick={() => playAll(selectedAlbum.tracks)}
-                            >播放全部</Button
-                        >
-                    </div>
                     <div class="flex-1 overflow-y-auto pb-8">
                         <TrackList
                             tracks={selectedAlbum.tracks}

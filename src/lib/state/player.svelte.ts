@@ -21,6 +21,7 @@ class Player {
     #pollTimer: any = null
     #loadToken = 0
     #storePromise: ReturnType<typeof load> | null = null
+    #debounceTimer: any = null
 
     constructor() {
         this.#setupMediaSession()
@@ -106,7 +107,7 @@ class Player {
             this.#muted = false
         }
         invoke('set_volume', { volume }).catch(console.error)
-        void this.#persist()
+        this.#saveDebounced()
     }
 
     get muted() { return this.#muted }
@@ -120,6 +121,7 @@ class Player {
             this.#volume = this.#previousVolume
             invoke('set_volume', { volume: this.#previousVolume }).catch(console.error)
         }
+        this.#saveDebounced()
     }
 
     async #getStore() {
@@ -127,6 +129,13 @@ class Player {
             this.#storePromise = load(STORE_NAME)
         }
         return this.#storePromise
+    }
+
+    #saveDebounced() {
+        if (this.#debounceTimer) clearTimeout(this.#debounceTimer)
+        this.#debounceTimer = setTimeout(() => {
+            void this.#persist()
+        }, 1000)
     }
 
     replacePlaylistAndPlay(tracks: Track[], targetId: string) {
@@ -149,12 +158,13 @@ class Player {
         this.playlist = nextQueue
         this.currentIndex = nextIndex
         void this.#loadAndPlay()
-        void this.#persist()
+        this.#saveDebounced()
     }
 
     appendTrack(track: Track) {
         if (this.playlist.some(t => t.id === track.id)) return
         this.playlist = [...this.playlist, track]
+        this.#saveDebounced()
     }
 
     insertNext(track: Track) {
@@ -174,12 +184,14 @@ class Player {
         if (nextQueue.length === 0 || nextIndex === -1) {
             this.playlist = [track]
             this.currentIndex = 0
+            this.#saveDebounced()
             return
         }
 
         nextQueue.splice(nextIndex + 1, 0, track)
         this.playlist = nextQueue
         this.currentIndex = nextIndex
+        this.#saveDebounced()
     }
 
     removeTrack(id: string) {
@@ -197,6 +209,7 @@ class Player {
             this.#clearMediaSession()
             this.#stopPolling()
             invoke('toggle_music').catch(console.error)
+            this.#saveDebounced()
             return
         }
 
@@ -205,6 +218,7 @@ class Player {
             this.playlist = nextQueue
             this.currentIndex = nextIndex
             void this.#loadAndPlay()
+            this.#saveDebounced()
             return
         }
 
@@ -214,20 +228,21 @@ class Player {
         }
         this.playlist = nextQueue
         this.currentIndex = nextIndex
+        this.#saveDebounced()
     }
 
     playTrackInQueue(index: number) {
         if (index < 0 || index >= this.playlist.length) return
         this.currentIndex = index
         void this.#loadAndPlay()
-        void this.#persist()
+        this.#saveDebounced()
     }
 
     cyclePlayMode() {
         const modes: PlayMode[] = ['list', 'single', 'shuffle']
         const currentModeIndex = modes.indexOf(this.playMode)
         this.playMode = modes[(currentModeIndex + 1) % modes.length]
-        void this.#persist()
+        this.#saveDebounced()
     }
 
     toggleQueue() {
@@ -266,6 +281,7 @@ class Player {
         }
         this.currentIndex = this.#getNextIndex()
         void this.#loadAndPlay()
+        this.#saveDebounced()
     }
 
     prev() {
@@ -276,11 +292,13 @@ class Player {
             if (index !== -1) {
                 this.currentIndex = index
                 void this.#loadAndPlay()
+                this.#saveDebounced()
                 return
             }
         }
         this.currentIndex = this.#getPrevIndex()
         void this.#loadAndPlay()
+        this.#saveDebounced()
     }
 
     resume = async () => {
@@ -427,6 +445,9 @@ class Player {
 
     destroy() {
         this.#stopPolling()
+        if (this.#debounceTimer) {
+            clearTimeout(this.#debounceTimer)
+        }
     }
 }
 

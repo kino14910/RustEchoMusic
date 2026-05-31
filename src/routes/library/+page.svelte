@@ -6,8 +6,11 @@
 
     import Button from '$lib/components/base/Button.svelte'
     import Heading from '$lib/components/base/Heading.svelte'
+    import IconButton from '$lib/components/base/IconButton.svelte'
     import SearchBar from '$lib/components/base/SearchBar.svelte'
 
+    import '@mdui/icons/play-arrow--rounded.js'
+    import '@mdui/icons/refresh--rounded.js'
     import 'mdui/components/button.js'
     import 'mdui/components/circular-progress.js'
     import 'mdui/components/segmented-button-group.js'
@@ -24,11 +27,18 @@
     })
 
     const searchResults = $derived(
-        musicLibrary.tracks.filter(track => 
-            (track.title ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (track.artist ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (track.album ?? '').toLowerCase().includes(searchQuery.toLowerCase())
-        )
+        musicLibrary.tracks.filter(
+            track =>
+                (track.title ?? '')
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase()) ||
+                (track.artist ?? '')
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase()) ||
+                (track.album ?? '')
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase()),
+        ),
     )
 
     const defaultSortedTracks = $derived.by(() => {
@@ -37,7 +47,9 @@
         })
     })
 
-    const displayTracks = $derived(searchQuery ? searchResults : defaultSortedTracks)
+    const displayTracks = $derived(
+        searchQuery ? searchResults : defaultSortedTracks,
+    )
 
     function playAll() {
         if (displayTracks.length === 0) return
@@ -45,7 +57,8 @@
     }
 
     function handleSortChange(event: Event) {
-        const value = (event.currentTarget as HTMLElement & { value: string }).value
+        const value = (event.currentTarget as HTMLElement & { value: string })
+            .value
         if (value === 'title' || value === 'artist' || value === 'album') {
             sortBy = value
         }
@@ -57,37 +70,50 @@
 </svelte:head>
 
 <div class="flex flex-col h-full overflow-hidden">
-    <header class="border-b border-[rgb(var(--mdui-color-outline-variant))] pb-4 shrink-0">
-        <Heading eyebrow="library" title="歌曲">
-            <Button
-                variant="filled"
-                disabled={displayTracks.length === 0}
-                onclick={playAll}
-            >
-                播放全部
-            </Button>
-
-            <Button
-                variant="outlined"
-                onclick={() => musicLibrary.scan()}
-            >
-                刷新
-            </Button>
-        </Heading>
-        <div class="flex px-2 gap-16 justify-end items-center">
-            <div class="max-w-md">
-                <SearchBar bind:value={searchQuery} />
-            </div>
-            <div class="flex">
-                <mdui-segmented-button-group
-                    selects="single"
-                    value={sortBy}
-                    onchange={handleSortChange}
+    <header
+        class="border-b border-[rgb(var(--mdui-color-outline-variant))] pb-4 shrink-0"
+    >
+        <Heading eyebrow="library" title="歌曲" />
+        <div class="flex justify-between">
+            <div class="flex items-center gap-2">
+                <Button
+                    variant="filled"
+                    icon="play_arrow--rounded"
+                    disabled={displayTracks.length === 0}
+                    onclick={playAll}
                 >
-                    <mdui-segmented-button value="title">标题</mdui-segmented-button>
-                    <mdui-segmented-button value="artist">歌手</mdui-segmented-button>
-                    <mdui-segmented-button value="album">专辑</mdui-segmented-button>
-                </mdui-segmented-button-group>
+                    播放全部
+                </Button>
+
+                <IconButton
+                    icon="refresh--rounded"
+                    variant="tonal"
+                    onclick={() => musicLibrary.scan()}
+                >
+                    刷新
+                </IconButton>
+            </div>
+            <div class="flex px-2 gap-16 justify-end items-center">
+                <div class="max-w-md">
+                    <SearchBar bind:value={searchQuery} />
+                </div>
+                <div class="flex">
+                    <mdui-segmented-button-group
+                        selects="single"
+                        value={sortBy}
+                        onchange={handleSortChange}
+                    >
+                        <mdui-segmented-button value="title"
+                            >标题</mdui-segmented-button
+                        >
+                        <mdui-segmented-button value="artist"
+                            >歌手</mdui-segmented-button
+                        >
+                        <mdui-segmented-button value="album"
+                            >专辑</mdui-segmented-button
+                        >
+                    </mdui-segmented-button-group>
+                </div>
             </div>
         </div>
     </header>
@@ -101,7 +127,9 @@
             {musicLibrary.error}
         </div>
     {:else if displayTracks.length === 0}
-        <div class="flex flex-1 flex-col items-center justify-center gap-2 text-[rgb(var(--mdui-color-on-surface-variant))]" >
+        <div
+            class="flex flex-1 flex-col items-center justify-center gap-2 text-[rgb(var(--mdui-color-on-surface-variant))]"
+        >
             <div class="text-5xl">🎵</div>
             <div class="text-base font-medium">没有找到歌曲</div>
             <div class="text-sm">尝试刷新媒体库或修改搜索关键词</div>

@@ -15,69 +15,139 @@
         items,
         emptyTitle = '暂无内容',
         emptyDescription = '这里还没有可以显示的内容',
+        selectedId = null,
+        onselect,
+        onplay,
     }: {
         items: MediaGridItem[]
         emptyTitle?: string
         emptyDescription?: string
+        selectedId?: string | number | null
+        onselect?: (item: MediaGridItem) => void
+        onplay?: (item: MediaGridItem, event: Event) => void
     } = $props()
+
+    function handleSelect(item: MediaGridItem) {
+        onselect?.(item)
+    }
+
+    function handleKeydown(item: MediaGridItem, event: KeyboardEvent) {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+
+        event.preventDefault()
+        handleSelect(item)
+    }
+
+    function handlePlay(item: MediaGridItem, event: Event) {
+        event.preventDefault()
+        event.stopPropagation()
+        onplay?.(item, event)
+    }
+
+    function handlePlayKeydown(item: MediaGridItem, event: KeyboardEvent) {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+
+        handlePlay(item, event)
+    }
 </script>
 
-{#snippet mediaCard(item: MediaGridItem)}
-    <mdui-card
-        href={item.href ?? undefined}
-        class="group"
-        aria-label={item.title}
+{#snippet mediaCardContent(item: MediaGridItem, isSelected: boolean)}
+    <div
+        class="relative mb-3 aspect-square
+               bg-[rgb(var(--mdui-color-surface-container-highest))]
+               {item.shape === 'circle' ? 'rounded-full' : 'rounded-t-xl'}"
     >
-        <div
-            class="relative mb-3 aspect-square overflow
-                       bg-[rgb(var(--mdui-color-surface-container-highest))]
-                       {item.shape === 'circle'
-                ? 'rounded-full'
-                : 'rounded-t-xl'}"
-        >
-            {#if item.image}
-                <img
-                    src={item.image}
-                    alt={item.title}
-                    class="h-full w-full object-cover group-hover:scale-105"
-                    loading="lazy"
-                />
-            {:else}
-                <div
-                    class="flex h-full w-full items-center justify-center text-4xl
-                               text-[rgb(var(--mdui-color-on-surface-variant))]"
-                >
-                    {item.shape === 'circle' ? '👤' : '🎵'}
-                </div>
-            {/if}
-
+        {#if item.image}
+            <img
+                src={item.image}
+                alt={item.title}
+                class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                loading="lazy"
+            />
+        {:else}
             <div
-                class="absolute inset-0 flex items-end justify-end p-3 opacity-0
-                           transition-opacity duration-200 group-hover:opacity-100"
+                class="flex h-full w-full items-center justify-center text-4xl
+                       text-[rgb(var(--mdui-color-on-surface-variant))]"
             >
-                <mdui-button-icon variant="filled" icon="play_arrow--rounded"
+                {item.shape === 'circle' ? '👤' : '🎵'}
+            </div>
+        {/if}
+
+        {#if onplay}
+            <div
+                class="absolute inset-0 flex items-end justify-end p-2 opacity-0
+                       transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
+            >
+                <mdui-button-icon
+                    variant="filled"
+                    icon="play_arrow--rounded"
+                    aria-label={`播放 ${item.title}`}
+                    role="button"
+                    tabindex="0"
+                    onclick={(event: Event) => handlePlay(item, event)}
+                    onkeydown={(event: KeyboardEvent) =>
+                        handlePlayKeydown(item, event)}
                 ></mdui-button-icon>
             </div>
-        </div>
+        {/if}
+    </div>
 
-        <div class="min-w-0 px-2">
-            <h2
-                class="truncate text-sm font-semibold
-                           text-[rgb(var(--mdui-color-on-surface))]"
+    <div class="min-w-0 px-2 pb-2">
+        <h2
+            class={[
+                'truncate text-sm font-semibold',
+                isSelected
+                    ? 'text-[rgb(var(--mdui-color-on-secondary-container))]'
+                    : 'text-[rgb(var(--mdui-color-on-surface))]',
+            ]}
+        >
+            {item.title}
+        </h2>
+
+        {#if item.subtitle}
+            <p
+                class={[
+                    'mt-0 truncate text-xs',
+                    isSelected
+                        ? 'text-[rgb(var(--mdui-color-on-secondary-container))]'
+                        : 'text-[rgb(var(--mdui-color-on-surface-variant))]',
+                ]}
             >
-                {item.title}
-            </h2>
+                {item.subtitle}
+            </p>
+        {/if}
+    </div>
+{/snippet}
 
-            {#if item.subtitle}
-                <p
-                    class="mt-0 truncate text-xs
-                               text-[rgb(var(--mdui-color-on-surface-variant))]"
-                >
-                    {item.subtitle}
-                </p>
-            {/if}
-        </div>
-    </mdui-card>
+{#snippet mediaCard(item: MediaGridItem)}
+    {@const isSelected = selectedId === item.id}
+    {#if onselect}
+        <mdui-card
+            class={[
+                'group cursor-pointer outline-none transition-colors hover:bg-(--mdui-color-secondary-container)/80',
+                isSelected && 'bg-[rgb(var(--mdui-color-secondary-container))]',
+            ]}
+            aria-label={item.title}
+            aria-pressed={isSelected}
+            onclick={() => handleSelect(item)}
+            onkeydown={(event: KeyboardEvent) => handleKeydown(item, event)}
+            role="button"
+            tabindex="0"
+        >
+            {@render mediaCardContent(item, isSelected)}
+        </mdui-card>
+    {:else}
+        <mdui-card
+            href={item.href ?? undefined}
+            class={[
+                'group outline-none transition-colors bg-(--mdui-color-secondary-container)/80',
+                isSelected && 'bg-[rgb(var(--mdui-color-secondary-container))]',
+            ]}
+            aria-label={item.title}
+        >
+            {@render mediaCardContent(item, isSelected)}
+        </mdui-card>
+    {/if}
 {/snippet}
 
 {#if items.length === 0}

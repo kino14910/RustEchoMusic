@@ -1,22 +1,19 @@
 <script lang="ts">
-    import type { Snippet } from 'svelte'
 
     type PageHeadingProps = {
         eyebrow: string
         title: string
-        children?: Snippet
         class?: string
     }
 
     let {
         eyebrow,
         title,
-        children,
         class: className = '',
     }: PageHeadingProps = $props()
 </script>
 
-<div class="flex justify-between mx-2">
+<div class="mx-2">
     <div>
         <p
             class="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--mdui-color-primary))]"
@@ -30,10 +27,4 @@
             {title}
         </h1>
     </div>
-
-    {#if children}
-        <div class="flex items-center gap-2">
-            {@render children()}
-        </div>
-    {/if}
 </div>

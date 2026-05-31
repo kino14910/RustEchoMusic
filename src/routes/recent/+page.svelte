@@ -13,13 +13,26 @@
 </svelte:head>
 
 <header class="border-b border-[rgb(var(--mdui-color-outline-variant))] pb-5">
-    <Heading eyebrow="Recent" title="最近播放">
+    <Heading eyebrow="Recent" title="最近播放" />
+    <div class="flex items-center gap-2">
+        <Button
+            variant="filled"
+            icon="play_arrow--rounded"
+            disabled={recentlyPlayed.tracks.length === 0}
+            onclick={() => recentlyPlayed.clear()}
+        >
+            播放全部
+        </Button>
+
         {#if recentlyPlayed.tracks.length > 0}
-            <Button variant="outlined" onclick={() => recentlyPlayed.clear()}>
+            <Button
+                variant="outlined"
+                onclick={() => recentlyPlayed.clear()}
+            >
                 清空
             </Button>
         {/if}
-    </Heading>
+    </div>
 </header>
 
 {#if recentlyPlayed.isLoading}

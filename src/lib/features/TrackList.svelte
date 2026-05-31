@@ -15,7 +15,7 @@
     }
 
     const columnWidths: Record<TrackColumn, string> = {
-        index: '48px',
+        index: '24px',
         title: '1fr',
         album: '1fr',
         tags: 'auto',
@@ -87,7 +87,7 @@
 {#snippet trackCover(track: Track, cover: string | null)}
     <div
         {@attach lazyCover(track)}
-        class="w-10 h-10 rounded-md overflow-hidden themed-surface-container shrink-0 transition-transform duration-100! group-hover:scale-105 group-hover:shadow-md"
+        class="w-10 h-10 rounded-md overflow-hidden shrink-0 transition-transform duration-100! group-hover:scale-105 group-hover:shadow-md"
     >
         {#if cover}
             <img
@@ -203,7 +203,7 @@
 
 <mdui-list class="flex flex-col w-full">
     <mdui-list-subheader
-        class="sticky grid items-center gap-4 w-full pl-4 pr-6 text-xs uppercase tracking-wider font-semibold themed-text-secondary themed-border-b themed-surface-container"
+        class="sticky grid items-center gap-4 w-full pl-4 pr-6 text-xs uppercase tracking-wider font-semibold themed-text-secondary themed-border-b"
         style:grid-template-columns={gridTemplate}
         noninteractive
     >
@@ -250,10 +250,6 @@
 
     .themed-border-b {
         border-bottom: 1px solid rgb(var(--mdui-color-outline-variant));
-    }
-
-    .themed-surface-container {
-        background-color: rgb(var(--mdui-color-surface-container-highest));
     }
 
     .themed-surface-high {
