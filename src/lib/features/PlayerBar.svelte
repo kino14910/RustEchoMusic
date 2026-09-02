@@ -1,52 +1,61 @@
 <script lang="ts">
-    // Mdui 的 M2 Slider,用于播放进度
-    import MduiSlider from '$lib/components/base/MduiSlider.svelte'
-    // M3 自定义 Slider
     import IconButton from '$lib/components/base/IconButton.svelte'
+    import MduiSlider from '$lib/components/base/MduiSlider.svelte'
     import Slider from '$lib/components/base/Slider.svelte'
     import { trackCovers } from '$lib/state/covers.svelte'
     import { player } from '$lib/state/player.svelte'
+    import { pluginState } from '$lib/state/plugins.svelte'
     import { formatTime } from '$lib/utils'
+    import type { Slider as MduiSliderElement } from 'mdui'
 
-    let slider = $state<MduiSlider | null>(null)
-    let currentCover = $state<string | null>(null)
+    let slider = $state<MduiSliderElement | null>(null)
+    $effect(() => {
+        if (slider) {
+            slider.labelFormatter = (value: number) => formatTime(value)
+        }
+    })
 
+    let isDragging = $state(false)
+    let localProgress = $state(0)
+
+    let currentCover = $derived(
+        player.currentTrack?.cover ?? trackCovers.get(player.currentTrack),
+    )
     let volumeIcon = $derived(getVolumeIcon(player.volume, player.muted))
     let playModeIcon = $derived.by(() => {
-        if (player.playMode === 'single') return 'repeat_one--rounded'
-        if (player.playMode === 'shuffle') return 'shuffle--rounded'
+        if (player.queue.playMode === 'SingleLoop') return 'repeat_one--rounded'
+        if (player.queue.playMode === 'Shuffle') return 'shuffle--rounded'
         return 'repeat--rounded'
     })
+
+    function toggleNativePanel(pluginId: string) {
+        pluginState.activeNativePanel =
+            pluginState.activeNativePanel === pluginId ? null : pluginId
+    }
 
     function getVolumeIcon(volume: number, muted: boolean) {
         if (muted) return 'volume_off--rounded'
         if (volume === 0) return 'volume_mute--rounded'
         return volume > 50 ? 'volume_up--rounded' : 'volume_down--rounded'
     }
-    function handleSeekInput(e: Event): void {
-        const target = e.currentTarget as HTMLElement & {
-            value: number | string
-        }
 
-        player.seek(Number(target.value))
+    function handleSliderInput(e: Event): void {
+        const target = e.currentTarget as HTMLElement & { value: number | string }
+
+        isDragging = true
+
+        localProgress = Number(target.value)
     }
 
-    $effect(() => {
-        const track = player.currentTrack
+    async function handleSliderChange(e: Event): Promise<void> {
+        const target = e.currentTarget as HTMLElement & { value: number | string }
+        const finalValue = Number(target.value)
 
-        if (!track) {
-            currentCover = null
-            return
-        }
+        player.currentTime = finalValue
+        await player.seek(finalValue)
 
-        currentCover = trackCovers.get(track)
-
-        trackCovers.load(track).then(cover => {
-            if (player.currentTrack?.path === track.path) {
-                currentCover = cover
-            }
-        })
-    })
+        isDragging = false
+    }
 </script>
 
 {#snippet progressArea()}
@@ -57,17 +66,18 @@
             {formatTime(player.currentTime)}
         </span>
 
-        <div class="flex-1">
+        <div class="flex-1 z-9999!">
             <MduiSlider
-                bind:value={player.currentTime}
-                bind:this={slider}
-                oninput={handleSeekInput}
-                duration={player.currentTrack?.duration ?? 0}
+                bind:el={slider}
+                value={isDragging ? localProgress : player.currentTime}
+                duration={(player.currentTrack?.duration ?? 0) / 1000}
+                oninput={handleSliderInput}
+                onchange={handleSliderChange}
             />
         </div>
 
         <span class="text-xs tabular-nums text-black min-w-10">
-            {formatTime(player.currentTrack?.duration ?? 0)}
+            {formatTime((player.currentTrack?.duration ?? 0) / 1000)}
         </span>
     </div>
 {/snippet}
@@ -116,6 +126,14 @@
             onclick={() => player.cyclePlayMode()}
             class="opacity-70 hover:opacity-100"
         />
+
+        {#each pluginState.nativeViewExtensions.filter(nv => nv.state === 'Enabled') as nv (nv.pluginId + nv.id)}
+            <IconButton
+                icon={nv.icon ?? 'extension'}
+                onclick={() => toggleNativePanel(nv.pluginId)}
+                class={pluginState.activeNativePanel === nv.pluginId ? 'text-[rgb(var(--mdui-color-primary))]' : 'opacity-70 hover:opacity-100'}
+            />
+        {/each}
 
         <IconButton
             icon="playlist_play--rounded"

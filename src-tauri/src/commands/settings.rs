@@ -1,63 +1,47 @@
-use std::fs;
-use std::fs::File;
-use std::path::PathBuf;
+use crate::errors::AppError;
+use crate::events::{AppEvent, EventBus};
+use crate::models::AppSettings;
+use crate::state::AppState;
+use tauri::{command, AppHandle, State};
 
-use tauri::{command, Manager};
-
-use crate::models::settings::AppSettings;
-
-const SETTINGS_FILE: &str = "settings.json";
-
-fn settings_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let app_data_path = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("无法获取应用数据目录: {}", e))?;
-
-    if !app_data_path.exists() {
-        fs::create_dir_all(&app_data_path)
-            .map_err(|e| format!("创建应用数据目录失败: {}", e))?;
-    }
-
-    Ok(app_data_path.join(SETTINGS_FILE))
+#[command]
+pub async fn get_settings(state: State<'_, AppState>) -> Result<AppSettings, AppError> {
+    state.settings.get_settings().await
 }
 
 #[command]
-pub async fn load_settings(app_handle: tauri::AppHandle) -> Result<AppSettings, String> {
-    let path = settings_path(&app_handle)?;
+pub async fn update_settings(
+    app_handle: AppHandle,
+    state: State<'_, AppState>,
+    settings: AppSettings,
+) -> Result<AppSettings, AppError> {
+    let updated_settings = state.settings.update_settings(settings).await?;
 
-    if !path.exists() {
-        let settings = AppSettings::default();
-        save_settings(app_handle, settings.clone()).await?;
-        return Ok(settings);
-    }
+    EventBus::emit(
+        &app_handle,
+        AppEvent::SettingsChanged(updated_settings.clone()),
+    )?;
 
-    let file = File::open(&path).map_err(|e| format!("无法打开设置文件: {}", e))?;
+    Ok(updated_settings)
+}
 
-    match serde_json::from_reader::<_, AppSettings>(file) {
-        Ok(settings) => Ok(settings),
-        Err(_) => {
-            let settings = AppSettings::default();
-            save_settings(app_handle, settings.clone()).await?;
-            Ok(settings)
-        }
-    }
+#[command]
+pub async fn load_settings(state: State<'_, AppState>) -> Result<AppSettings, AppError> {
+    state.settings.get_settings().await
 }
 
 #[command]
 pub async fn save_settings(
-    app_handle: tauri::AppHandle,
+    app_handle: AppHandle,
+    state: State<'_, AppState>,
     settings: AppSettings,
-) -> Result<AppSettings, String> {
-    let path = settings_path(&app_handle)?;
-    let temp_path = path.with_extension("json.tmp");
+) -> Result<AppSettings, AppError> {
+    let updated_settings = state.settings.update_settings(settings).await?;
 
-    let json = serde_json::to_string_pretty(&settings)
-        .map_err(|e| format!("序列化设置失败: {}", e))?;
+    EventBus::emit(
+        &app_handle,
+        AppEvent::SettingsChanged(updated_settings.clone()),
+    )?;
 
-    fs::write(&temp_path, json).map_err(|e| format!("写入设置临时文件失败: {}", e))?;
-
-    fs::rename(temp_path, path).map_err(|e| format!("保存设置失败: {}", e))?;
-
-    Ok(settings)
+    Ok(updated_settings)
 }

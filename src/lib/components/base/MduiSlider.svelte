@@ -1,27 +1,32 @@
 <script lang="ts">
+    import type { Slider } from 'mdui'
     import { onMount } from 'svelte'
 
-    type MduiSliderElement = HTMLElement & {
+    type MduiSliderElement = Slider & {
         value: number | string
         shadowRoot: ShadowRoot | null
     }
 
     type SliderProps = {
+        nolabel?: boolean
         value?: number
         classList?: string
         class?: string
         duration?: number
+        el?: Slider | null,
         oninput?: (event: Event) => void
         onchange?: (event: Event) => void
     }
 
     let {
+        nolabel = false,
         value = $bindable(0),
         classList = '',
         class: className = '',
         oninput,
         onchange,
-        duration = 0
+        duration = 0,
+        el = $bindable(null)
     }: SliderProps = $props()
 
     let sliderRef = $state<MduiSliderElement | null>(null)
@@ -93,7 +98,8 @@
 </script>
 
 <mdui-slider
-    nolabel
+    bind:this={el}
+    {nolabel}
     max={duration}
     value={value}
     class={`${classList} ${className}`}

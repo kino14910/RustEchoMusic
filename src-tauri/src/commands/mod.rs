@@ -1,4 +1,12 @@
+pub mod equalizer;
+pub mod library;
+pub mod menu;
+pub mod playback;
+pub mod playback_queue;
+pub mod playlists;
+pub mod plugin_extensions;
+pub mod plugin_kernel;
+pub mod plugin;
 pub mod recent;
 pub mod settings;
-pub mod playback;
-pub mod library;
+pub mod tracks;

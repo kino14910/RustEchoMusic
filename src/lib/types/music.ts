@@ -1,15 +1,17 @@
+import type { PlayMode } from "./playback"
+
 export interface Track {
-    id: string
+    id: number
     title: string
-    artist: string
-    album: string
-    albumArtist: string
+    artist: string | null
+    album: string | null
     duration: number
-    sampleRate?: number | null
-    cover?: string | null
-    path: string
-    url?: string
-    tags?: string[]
+    cover: string | null
+    fileSize: number | null
+    playCount: number
+    lastPlayedAt: string | null
+    createdAt: string
+    updatedAt: string
 }
 
 export interface Playlist {
@@ -18,23 +20,28 @@ export interface Playlist {
   cover: string
 }
 
-
 export interface Artist {
     id: string
     name: string
-    cover?: string | null
+    cover: string | null
     trackCount: number
     albumCount: number
     tracks: Track[]
 }
 
-
 export interface Album {
     id: string
     title: string
     artist: string
-    cover?: string | null
+    cover: string | null
     tracks: Track[]
     trackCount: number
     representativeTrack: Track
+}
+
+export interface PlaybackQueue {
+    tracks: Track[]
+    currentIndex: number | null
+    playMode: PlayMode
+    history: number[]
 }

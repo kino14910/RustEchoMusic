@@ -55,7 +55,7 @@
   <div class="flex items-center pr-6 [-webkit-app-region:no-drag]">
     <div class="flex gap-1 bg-(--controlWhite) rounded-lg p-1">
       <div
-        class="flex items-center justify-center w-8 h-8 rounded cursor-pointer bg-transparent hover:bg-(--fade) active:bg-(--controlBlackAcrylic) font-[material-symbols-rounded] text-lg"
+        class="flex items-center justify-center w-8 h-8 rounded cursor-pointer bg-transparent hover:bg-(--fade) active:bg-(--controlBlackAcrylic) text-lg"
         onclick={min}
         onkeydown={e => {
           if (e.key === 'Enter' || e.key === ' ') min()

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { page } from '$app/state'
 
-    import { importMusicDirectory } from '$lib/utils/library'
+    import { scanDirectory } from '$lib/utils/library'
 
     import 'mdui/components/navigation-rail-item.js'
     import 'mdui/components/navigation-rail.js'
@@ -35,6 +35,12 @@
             icon: 'person--outlined',
         },
         {
+            label: 'Plugins',
+            href: '/plugins',
+            icon: 'extension--outlined',
+            slot: 'bottom',
+        },
+        {
             label: 'Settings',
             href: '/settings',
             icon: 'settings--outlined',
@@ -55,17 +61,17 @@
         lowered
         icon="playlist_add--rounded"
         slot="top"
-        onclick={importMusicDirectory}
+        onclick={scanDirectory}
         onkeydown={(e: KeyboardEvent) => {
             if (e.key === 'Enter' || e.key === ' ') {
-                importMusicDirectory()
+                scanDirectory()
             }
         }}
         role="button"
         tabindex="0"
     ></mdui-fab>
 
-    {#each navItems as item}
+    {#each navItems as item (item.href)}
         <mdui-navigation-rail-item
             value={item.href}
             href={item.href}

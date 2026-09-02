@@ -1,5 +1,5 @@
 <script lang="ts">
-    import TrackList from '$lib/features/TrackList.svelte'
+    import TrackList from '$lib/features/track-list/TrackList.svelte'
     import { recentlyPlayed } from '$lib/state/recent.svelte'
 
     import Button from '$lib/components/base/Button.svelte'

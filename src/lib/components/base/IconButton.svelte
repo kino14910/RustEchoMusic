@@ -1,11 +1,17 @@
 <script lang="ts">
-    const { onclick = () => {}, ...props } = $props()
+    const {
+        onclick = () => {},
+        ...props
+    } = $props()
 </script>
 
 <mdui-button-icon
-    onclick={() => onclick()}
-    onkeydown={(e: KeyboardEvent) =>
-        (e.key === 'Enter' || e.key === ' ') && onclick()}
+    onclick={(event: MouseEvent) => onclick(event)}
+    onkeydown={(event: KeyboardEvent) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            onclick(event)
+        }
+    }}
     role="button"
     tabindex="0"
     {...props}

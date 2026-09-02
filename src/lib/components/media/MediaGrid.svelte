@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { createVirtualizer } from '@tanstack/svelte-virtual'
+    import { untrack } from 'svelte'
     import 'mdui/components/button-icon.js'
     import 'mdui/components/card.js'
 
@@ -27,13 +29,57 @@
         onplay?: (item: MediaGridItem, event: Event) => void
     } = $props()
 
+    let scrollContainer = $state<HTMLElement | null>(null)
+    let containerWidth = $state(0)
+
+    let columns = $derived.by(() => {
+        const width = containerWidth || 800
+        if (width >= 1280) return 8
+        if (width >= 1024) return 7
+        if (width >= 768) return 6
+        if (width >= 640) return 5
+        return 4
+    })
+
+    let rowCount = $derived(Math.ceil(items.length / columns))
+
+    let rowHeight = $derived.by(() => {
+        if (!containerWidth || !columns) return 250
+        const gap = 16
+        const colWidth = (containerWidth - gap * (columns - 1)) / columns
+        return colWidth + 72
+    })
+
+    const options = $derived({
+        count: rowCount, 
+        getScrollElement: () => scrollContainer,
+        estimateSize: () => rowHeight,
+    })
+    
+    const virtualizer = $derived.by(() => createVirtualizer(options))
+
+    $effect(() => {
+        const count = rowCount
+        const element = scrollContainer
+        const size = rowHeight
+
+        untrack(() => {
+            $virtualizer.setOptions({
+                count,
+                getScrollElement: () => element,
+                estimateSize: () => size,
+                overscan: 3,
+            })
+            $virtualizer.measure()
+        })
+    })
+
     function handleSelect(item: MediaGridItem) {
         onselect?.(item)
     }
 
     function handleKeydown(item: MediaGridItem, event: KeyboardEvent) {
         if (event.key !== 'Enter' && event.key !== ' ') return
-
         event.preventDefault()
         handleSelect(item)
     }
@@ -46,16 +92,13 @@
 
     function handlePlayKeydown(item: MediaGridItem, event: KeyboardEvent) {
         if (event.key !== 'Enter' && event.key !== ' ') return
-
         handlePlay(item, event)
     }
 </script>
 
 {#snippet mediaCardContent(item: MediaGridItem, isSelected: boolean)}
     <div
-        class="relative mb-3 aspect-square
-               bg-[rgb(var(--mdui-color-surface-container-highest))]
-               {item.shape === 'circle' ? 'rounded-full' : 'rounded-t-xl'}"
+        class="relative mb-3 aspect-square bg-[rgb(var(--mdui-color-surface-container-highest))] {item.shape === 'circle' ? 'rounded-full' : 'rounded-t-xl'}"
     >
         {#if item.image}
             <img
@@ -66,17 +109,19 @@
             />
         {:else}
             <div
-                class="flex h-full w-full items-center justify-center text-4xl
-                       text-[rgb(var(--mdui-color-on-surface-variant))]"
+                class="flex h-full w-full items-center justify-center text-4xl text-[rgb(var(--mdui-color-on-surface-variant))]"
             >
-                {item.shape === 'circle' ? '👤' : '🎵'}
+                {#if item.shape === 'circle'}
+                    👤
+                {:else}
+                    🎵
+                {/if}
             </div>
         {/if}
 
         {#if onplay}
             <div
-                class="absolute inset-0 flex items-end justify-end p-2 opacity-0
-                       transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
+                class="absolute inset-0 flex items-end justify-end p-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
             >
                 <mdui-button-icon
                     variant="filled"
@@ -85,8 +130,7 @@
                     role="button"
                     tabindex="0"
                     onclick={(event: Event) => handlePlay(item, event)}
-                    onkeydown={(event: KeyboardEvent) =>
-                        handlePlayKeydown(item, event)}
+                    onkeydown={(event: KeyboardEvent) => handlePlayKeydown(item, event)}
                 ></mdui-button-icon>
             </div>
         {/if}
@@ -96,9 +140,7 @@
         <h2
             class={[
                 'truncate text-sm font-semibold',
-                isSelected
-                    ? 'text-[rgb(var(--mdui-color-on-secondary-container))]'
-                    : 'text-[rgb(var(--mdui-color-on-surface))]',
+                isSelected ? 'text-[rgb(var(--mdui-color-on-secondary-container))]' : 'text-[rgb(var(--mdui-color-on-surface))]',
             ]}
         >
             {item.title}
@@ -108,9 +150,7 @@
             <p
                 class={[
                     'mt-0 truncate text-xs',
-                    isSelected
-                        ? 'text-[rgb(var(--mdui-color-on-secondary-container))]'
-                        : 'text-[rgb(var(--mdui-color-on-surface-variant))]',
+                    isSelected ? 'text-[rgb(var(--mdui-color-on-secondary-container))]' : 'text-[rgb(var(--mdui-color-on-surface-variant))]',
                 ]}
             >
                 {item.subtitle}
@@ -152,29 +192,35 @@
 
 {#if items.length === 0}
     <div
-        class="flex min-h-60 flex-col items-center justify-center rounded-3xl
-               border border-dashed border-[rgb(var(--mdui-color-outline-variant))]
-               text-center"
+        class="flex min-h-60 flex-col items-center justify-center rounded-3xl border border-dashed border-[rgb(var(--mdui-color-outline-variant))] text-center"
     >
         <div class="text-5xl">🎧</div>
         <div class="mt-3 text-base font-medium">{emptyTitle}</div>
-        <div
-            class="mt-1 text-sm text-[rgb(var(--mdui-color-on-surface-variant))]"
-        >
+        <div class="mt-1 text-sm text-[rgb(var(--mdui-color-on-surface-variant))]">
             {emptyDescription}
         </div>
     </div>
 {:else}
-    <section>
-        <div
-            class="grid grid-cols-2 gap-4
-                   sm:grid-cols-3
-                   md:grid-cols-4
-                   lg:grid-cols-5
-                   xl:grid-cols-6"
-        >
-            {#each items as item (item.id)}
-                {@render mediaCard(item)}
+    <section 
+        bind:this={scrollContainer} 
+        bind:clientWidth={containerWidth}
+        class="h-full w-full overflow-y-scroll overflow-x-hidden"
+    >
+        <div style="height: {$virtualizer.getTotalSize()}px; position: relative; width: 100%;">
+            {#each $virtualizer.getVirtualItems() as row (row.index)}
+                {@const startIndex = row.index * columns}
+                {@const rowItems = items.slice(startIndex, startIndex + columns)}
+                
+                <div
+                    style="position: absolute; top: 0; left: 0; width: 100%; transform: translateY({row.start}px);"
+                    class="grid gap-4"
+                    style:grid-template-columns="repeat({columns}, minmax(0, 1fr))"
+                    data-index={row.index}
+                >
+                    {#each rowItems as item (item.id)}
+                        {@render mediaCard(item)}
+                    {/each}
+                </div>
             {/each}
         </div>
     </section>

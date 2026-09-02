@@ -8,6 +8,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
     scanOnStartup: false,
     reduceMotion: false,
     useAlbumArtistGrouping: false,
+    pluginDirs: [],
+    pluginDevMode: false,
+    pluginScanOnStartup: true,
+    pluginLogLevel: 'warn',
 }
 
 class SettingsState {
@@ -16,8 +20,14 @@ class SettingsState {
     error = $state<string | null>(null)
 
     #saveTimer: ReturnType<typeof setTimeout> | null = null
+    #loaded = false
 
     async load(): Promise<AppSettings> {
+        if (this.#loaded) {
+            return this.data
+        }
+
+        this.#loaded = true
         this.isLoading = true
         this.error = null
 
@@ -25,7 +35,7 @@ class SettingsState {
             this.data = await invoke<AppSettings>('load_settings')
             return this.data
         } catch (error) {
-            console.error('加载设置失败:', error)
+            console.error(error)
             this.error = String(error)
             return this.data
         } finally {
@@ -33,38 +43,40 @@ class SettingsState {
         }
     }
 
+    updateLocalState(newSettings: AppSettings) {
+        this.data = newSettings
+    }
+
     update(patch: Partial<AppSettings>) {
-        this.data = {
+        const nextSettings = {
             ...this.data,
             ...patch,
         }
-
-        this.scheduleSave()
+        this.data = nextSettings
+        this.scheduleSave(nextSettings)
     }
 
-    async save(): Promise<AppSettings> {
+    async save(targetSettings: AppSettings): Promise<void> {
         this.error = null
 
         try {
-            this.data = await invoke<AppSettings>('save_settings', {
-                settings: this.data,
+            const savedSettings = await invoke<AppSettings>('save_settings', {
+                settings: targetSettings,
             })
-
-            return this.data
+            this.data = savedSettings
         } catch (error) {
-            console.error('保存设置失败:', error)
+            console.error(error)
             this.error = String(error)
-            return this.data
         }
     }
 
-    scheduleSave() {
+    scheduleSave(targetSettings: AppSettings) {
         if (this.#saveTimer) {
             clearTimeout(this.#saveTimer)
         }
 
         this.#saveTimer = setTimeout(() => {
-            void this.save()
+            void this.save(targetSettings)
         }, 300)
     }
 

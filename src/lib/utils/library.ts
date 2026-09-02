@@ -2,7 +2,7 @@ import { musicLibrary } from '$lib/state/library.svelte'
 import { settings } from '$lib/state/settings.svelte'
 import { open } from '@tauri-apps/plugin-dialog'
 
-export async function importMusicDirectory() {
+export async function scanDirectory() {
     try {
         const selected = await open({
             directory: true,
@@ -16,7 +16,7 @@ export async function importMusicDirectory() {
 
         await musicLibrary.scan()
     } catch (err) {
-        console.error('导入音乐媒体库目录失败:', err)
+        console.error('扫描音乐媒体库目录失败:', err)
     }
 }
 

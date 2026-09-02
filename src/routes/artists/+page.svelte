@@ -6,7 +6,7 @@
     import MediaGrid, {
         type MediaGridItem,
     } from '$lib/components/media/MediaGrid.svelte'
-    import TrackList from '$lib/features/TrackList.svelte'
+    import TrackList from '$lib/features/track-list/TrackList.svelte'
     import { musicLibrary } from '$lib/state/library.svelte'
     import { player } from '$lib/state/player.svelte'
     import type { Artist, Track } from '$lib/types'

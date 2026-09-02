@@ -1,138 +1,139 @@
-use std::path::Path;
+use crate::audio::state::PlayMode;
+use crate::errors::AppError;
+use crate::events::{AppEvent, EventBus};
+use crate::models::playback::PlaybackStatusSnapshot;
+use crate::models::Track;
+use crate::services::playback_service::PlaybackService;
+use crate::state::playback_state::{
+    current_playback_snapshot, current_time_from_state, lock_audio_state, sanitize_track,
+    with_audio_state,
+};
+use tauri::{command, AppHandle};
 
-use tauri::command;
-use web_audio_api::context::BaseAudioContext;
-use web_audio_api::node::AudioNode;
-use web_audio_api::MediaElement;
-
-use crate::audio::{get_audio_context, get_audio_state};
+pub use crate::services::media_control_service::handle_media_control_event;
 
 #[command]
-pub async fn play_music(full_path: &str) -> Result<String, String> {
-    let file_path = Path::new(full_path);
+pub async fn sync_playback_queue(
+    app_handle: AppHandle,
+    playlist: Vec<Track>,
+    current_index: Option<usize>,
+    play_mode: PlayMode,
+    history: Vec<i64>,
+) -> Result<(), AppError> {
+    {
+        let mut state = lock_audio_state()?;
 
-    if !file_path.exists() {
-        return Err("音频文件不存在或已被移动".into());
+        state.playback_queue.sync(
+            playlist.into_iter().map(sanitize_track).collect(),
+            current_index,
+            play_mode,
+            history,
+        );
     }
 
-    let mut media = MediaElement::new(file_path)
-        .map_err(|e| format!("Failed to create media element: {}", e))?;
+    PlaybackService::emit_queue_changed(&app_handle)?;
 
-    let context = get_audio_context();
-    let src = context.create_media_element_source(&mut media);
-
-    let gain_node = context.create_gain();
-
-    src.connect(&gain_node);
-    gain_node.connect(&context.destination());
-
-    media.set_loop(false);
-    media.set_current_time(0.0);
-
-    let mut state = get_audio_state()
-        .lock()
-        .map_err(|_| "Failed to lock audio state")?;
-
-    gain_node.gain().set_value(state.volume);
-
-    if let Some(old_media) = state.media.replace(media) {
-        old_media.pause();
-    }
-
-    state.gain_node = Some(gain_node);
-
-    if let Some(ref media) = state.media {
-        media.play();
-    }
-
-    Ok(format!("Playing music: {}", full_path))
-}
-#[command]
-pub async fn resume_music() -> Result<(), String> {
-    let state = get_audio_state()
-        .lock()
-        .map_err(|_| "Failed to lock audio state")?;
-
-    if let Some(ref media) = state.media {
-        media.play();
-        Ok(())
-    } else {
-        Err("No media available".into())
-    }
+    Ok(())
 }
 
 #[command]
-pub async fn pause_music() -> Result<(), String> {
-    let state = get_audio_state()
-        .lock()
-        .map_err(|_| "Failed to lock audio state")?;
-
-    if let Some(ref media) = state.media {
-        media.pause();
-        Ok(())
-    } else {
-        Err("No media available".into())
-    }
+pub async fn remove_track_from_queue(app_handle: AppHandle, track_id: i64) -> Result<(), AppError> {
+    PlaybackService::new(app_handle)
+        .remove_track_from_queue(track_id)
+        .await
 }
 
+#[command]
+pub async fn insert_track_as_next(app_handle: AppHandle, track: Track) -> Result<(), AppError> {
+    with_audio_state(|state| {
+        state.playback_queue.insert_next(track);
+    })?;
+    PlaybackService::emit_queue_changed(&app_handle)?;
+    Ok(())
+}
 
 #[command]
-pub async fn toggle_music() -> Result<bool, String> {
-    let state = get_audio_state()
-        .lock()
-        .map_err(|_| "Failed to lock audio state")?;
+pub async fn play_queue_track(app_handle: AppHandle, index: usize) -> Result<(), AppError> {
+    PlaybackService::new(app_handle).play_queue_index(index)?;
+    Ok(())
+}
 
-    if let Some(ref media) = state.media {
-        if media.paused() {
-            media.play();
-            Ok(true)
-        } else {
-            media.pause();
-            Ok(false)
-        }
-    } else {
-        Err("No media available".into())
-    }
+#[command]
+pub async fn play_next_track(app_handle: AppHandle) -> Result<(), AppError> {
+    PlaybackService::new(app_handle).next().await?;
+    Ok(())
+}
+
+#[command]
+pub async fn play_previous_track(app_handle: AppHandle) -> Result<(), AppError> {
+    PlaybackService::new(app_handle).previous().await?;
+    Ok(())
+}
+
+#[command]
+pub async fn stop_track(app_handle: AppHandle) -> Result<(), AppError> {
+    PlaybackService::new(app_handle).stop().await?;
+    Ok(())
+}
+
+#[command]
+pub async fn play_track(
+    app_handle: AppHandle,
+    track_id: i64,
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<String, AppError> {
+    let track = state.tracks.get_track(track_id).await?;
+    let track = track.ok_or_else(|| AppError::from("曲目不存在"))?;
+    let service = PlaybackService::new(app_handle);
+    service.play_track(track, None)?;
+    Ok(format!("Playing track: {}", track_id))
+}
+
+#[command]
+pub async fn resume_track(app_handle: AppHandle) -> Result<(), AppError> {
+    PlaybackService::new(app_handle).resume().await?;
+    Ok(())
+}
+
+#[command]
+pub async fn pause_track(app_handle: AppHandle) -> Result<(), AppError> {
+    PlaybackService::new(app_handle).pause().await?;
+    Ok(())
+}
+
+#[command]
+pub async fn toggle_track(app_handle: AppHandle) -> Result<bool, AppError> {
+    let status = PlaybackService::new(app_handle).toggle().await?;
+    Ok(status)
 }
 
 #[command]
 pub async fn current_time() -> f64 {
-    let Ok(state) = get_audio_state().lock() else {
-        return 0.0;
-    };
-
-    if let Some(ref media) = state.media {
-        media.current_time()
-    } else {
-        0.0
-    }
+    current_time_from_state()
 }
 
 #[command]
-pub async fn set_current_time(time: f64) {
-    let Ok(state) = get_audio_state().lock() else {
-        return;
-    };
-
-    if let Some(ref media) = state.media {
-        media.set_current_time(time);
-    }
+pub async fn get_current_status() -> Result<PlaybackStatusSnapshot, AppError> {
+    current_playback_snapshot()
 }
 
 #[command]
-pub async fn set_volume(volume: u8) -> Result<(), String> {
-    let mut state = get_audio_state()
-        .lock()
-        .map_err(|_| "Failed to lock audio state")?;
+pub async fn set_current_time(app_handle: AppHandle, time: f64) -> Result<(), AppError> {
+    PlaybackService::new(app_handle).seek(time).await
+}
 
-    let volume = volume as f32 / 100.0;
-    let safe_volume = volume.clamp(0.0, 1.0);
+#[command]
+pub async fn set_volume(app_handle: tauri::AppHandle, volume: f32) -> Result<(), AppError> {
+    let mut state = lock_audio_state()?;
+    let safe_volume = (volume / 100.0).clamp(0.0, 1.0);
 
     state.volume = safe_volume;
 
-    if let Some(ref gain_node) = state.gain_node {
-        gain_node.gain().set_value(safe_volume);
+    if let Some(ref engine) = state.engine {
+        engine.set_volume(safe_volume);
     }
+
+    EventBus::emit(&app_handle, AppEvent::VolumeChanged(safe_volume))?;
 
     Ok(())
 }

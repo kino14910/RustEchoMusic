@@ -1,51 +1,43 @@
-
 import { invoke } from '@tauri-apps/api/core'
 import type { Track } from '../types/music'
 
 class TrackCovers {
     covers = $state<Record<string, string | null>>({})
-    loading = $state<Record<string, boolean>>({})
-
-    private promises = new Map<string, Promise<string | null>>()
+    private promises = new Map<number, Promise<string | null>>()
 
     async load(track: Track | null | undefined): Promise<string | null> {
-        if (!track?.path) return null
+        if (!track) return null
 
-        if (this.covers[track.path] !== undefined) {
-            return this.covers[track.path]
+        if (this.covers[track.id] !== undefined) {
+            return this.covers[track.id]
         }
 
-        if (this.promises.has(track.path)) {
-            return await this.promises.get(track.path)!
+        if (this.promises.has(track.id)) {
+            return await this.promises.get(track.id)!
         }
 
-        this.loading[track.path] = true
-
-        const promise = invoke<string | null>('get_track_cover', {
-            fullPath: track.path
-        })
+        const promise = invoke<string | null>('get_track_cover', { trackId: track.id })
             .then((cover) => {
-                this.covers[track.path] = cover
+                this.covers[track.id] = cover
                 return cover
             })
             .catch((err) => {
-                console.error('加载封面失败:', track.path, err)
-                this.covers[track.path] = null
+                console.error('加载封面失败:', track.id, err)
+                this.covers[track.id] = null
                 return null
             })
             .finally(() => {
-                this.loading[track.path] = false
-                this.promises.delete(track.path)
+                this.promises.delete(track.id)
             })
 
-        this.promises.set(track.path, promise)
+        this.promises.set(track.id, promise)
 
         return await promise
     }
 
     get(track: Track | null | undefined): string | null {
-        if (!track?.path) return null
-        return this.covers[track.path] ?? null
+        if (!track) return null
+        return this.covers[track.id] ?? null
     }
 }
 

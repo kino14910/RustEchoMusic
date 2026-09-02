@@ -1,34 +1,35 @@
+import type { GlobalAppEvent, PlaybackStatusSnapshot, PlayMode } from "$lib/types"
 import { invoke } from "@tauri-apps/api/core"
-import { load } from "@tauri-apps/plugin-store"
-import type { Track } from "../types/music"
+import { listen, type UnlistenFn } from "@tauri-apps/api/event"
+import type { PlaybackQueue, Track } from "../types/music"
+import { lyrics } from "./lyrics.svelte"
 import { recentlyPlayed } from "./recent.svelte"
 
-type PlayMode = 'list' | 'single' | 'shuffle'
-
-const STORE_NAME = "player-state.json"
-
 class Player {
-    playlist = $state<Track[]>([])
-    currentIndex = $state<number>(-1)
-    playing = $state<boolean>(false)
-    currentTime = $state<number>(0)
-    playMode = $state<PlayMode>('list')
-    queueOpen = $state<boolean>(false)
-    playbackHistory: string[] = []
+    queue = $state<PlaybackQueue>({
+        tracks: [],
+        currentIndex: null,
+        playMode: 'ListLoop',
+        history: [],
+    })
+
+    playing = $state(false)
+    currentTime = $state(0)
+    queueOpen = $state(false)
     #muted = $state<boolean>(false)
     #volume = $state<number>(80)
     #previousVolume = 80
-    #pollTimer: any = null
-    #loadToken = 0
-    #storePromise: ReturnType<typeof load> | null = null
-    #debounceTimer: any = null
+    #globalUnlisten: UnlistenFn | null = null
+    #isInitialized = false
+    #eventBuffer: GlobalAppEvent[] = []
 
     constructor() {
         this.#setupMediaSession()
     }
 
     #setupMediaSession() {
-        if (!('mediaSession' in navigator)) return
+        if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
+        if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) return
 
         navigator.mediaSession.setActionHandler('play', () => this.resume())
         navigator.mediaSession.setActionHandler('pause', () => this.pause())
@@ -41,7 +42,7 @@ class Player {
         })
         navigator.mediaSession.setActionHandler('seekforward', () => {
             if (!this.currentTrack) return
-            void this.seek(Math.min(this.currentTime + 10, this.currentTrack.duration))
+            void this.seek(Math.min(this.currentTime + 10, this.#trackDurationSeconds(this.currentTrack)))
         })
         navigator.mediaSession.setActionHandler('seekbackward', () => {
             if (!this.currentTrack) return
@@ -50,7 +51,7 @@ class Player {
     }
 
     #updateMediaMetadata() {
-        if (!('mediaSession' in navigator) || !this.currentTrack) return
+        if (typeof navigator === 'undefined' || !('mediaSession' in navigator) || !this.currentTrack) return
 
         navigator.mediaSession.metadata = new MediaMetadata({
             title: this.currentTrack.title,
@@ -65,18 +66,22 @@ class Player {
         return cover ? [{ src: cover }] : []
     }
 
+    #trackDurationSeconds(track: Track): number {
+        return track.duration / 1000
+    }
+
     #updatePlaybackState() {
-        if (!('mediaSession' in navigator)) return
+        if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
         navigator.mediaSession.playbackState = this.playing ? 'playing' : 'paused'
     }
 
     #updatePositionState() {
         const track = this.currentTrack
-        if (!track || !('mediaSession' in navigator) || !('setPositionState' in navigator.mediaSession)) return
+        if (!track || typeof navigator === 'undefined' || !('mediaSession' in navigator) || !('setPositionState' in navigator.mediaSession)) return
 
         navigator.mediaSession.setPositionState({
-            duration: track.duration,
-            playbackRate: this.playing ? 1 : 0,
+            duration: this.#trackDurationSeconds(track),
+            playbackRate: 1,
             position: this.currentTime,
         })
     }
@@ -88,225 +93,78 @@ class Player {
     }
 
     #clearMediaSession() {
-        if (!('mediaSession' in navigator)) return
+        if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
         navigator.mediaSession.metadata = null
         navigator.mediaSession.playbackState = 'none'
     }
 
-    get currentTrack(): Track | null {
-        if (this.currentIndex >= 0 && this.currentIndex < this.playlist.length) {
-            return this.playlist[this.currentIndex]
+    get currentTrack(): Track | undefined {
+        const index = this.queue.currentIndex
+        if (index === null || index < 0 || index >= this.queue.tracks.length) {
+            return undefined
         }
-        return null
+        return this.queue.tracks[index]
     }
 
     get volume() { return this.#volume }
     set volume(volume: number) {
-        this.#volume = volume
-        if (volume > 0) {
-            this.#muted = false
-        }
         invoke('set_volume', { volume }).catch(console.error)
-        this.#saveDebounced()
     }
 
     get muted() { return this.#muted }
     set muted(value: boolean) {
-        this.#muted = value
         if (value) {
             this.#previousVolume = this.#volume
-            this.#volume = 0
+            this.#muted = true
             invoke('set_volume', { volume: 0 }).catch(console.error)
         } else {
-            this.#volume = this.#previousVolume
+            this.#muted = false
             invoke('set_volume', { volume: this.#previousVolume }).catch(console.error)
         }
-        this.#saveDebounced()
     }
 
-    async #getStore() {
-        if (!this.#storePromise) {
-            this.#storePromise = load(STORE_NAME)
-        }
-        return this.#storePromise
+    async replacePlaylistAndPlay(tracks: Track[], targetId: number) {
+        await invoke('replace_playlist_and_play', { tracks, targetId })
     }
 
-    #saveDebounced() {
-        if (this.#debounceTimer) clearTimeout(this.#debounceTimer)
-        this.#debounceTimer = setTimeout(() => {
-            void this.#persist()
-        }, 1000)
+    async insertTracksAsNext(tracks: Track[]) {
+        await invoke('insert_tracks_as_next', { tracks })
     }
 
-    replacePlaylistAndPlay(tracks: Track[], targetId: string) {
-        if (tracks.length === 0) {
-            this.playlist = []
-            this.currentIndex = -1
-            this.playing = false
-            this.playbackHistory = []
-            this.#clearMediaSession()
-            this.#stopPolling()
-            invoke('toggle_music').catch(console.error)
-            return
-        }
-
-        const nextQueue = [...tracks]
-        const index = nextQueue.findIndex(t => t.id === targetId)
-        const nextIndex = index !== -1 ? index : 0
-
-        this.playbackHistory = []
-        this.playlist = nextQueue
-        this.currentIndex = nextIndex
-        void this.#loadAndPlay()
-        this.#saveDebounced()
+    async insertTrackAsNext(track: Track) {
+        await invoke('insert_track_as_next', { track })
     }
 
-    appendTrack(track: Track) {
-        if (this.playlist.some(t => t.id === track.id)) return
-        this.playlist = [...this.playlist, track]
-        this.#saveDebounced()
+    async removeTrack(trackId: number) {
+        await invoke('remove_track_from_queue', { trackId })
     }
 
-    insertNext(track: Track) {
-        const existingIndex = this.playlist.findIndex(item => item.id === track.id)
-        if (existingIndex === this.currentIndex && this.currentIndex !== -1) return
-
-        let nextQueue = [...this.playlist]
-        let nextIndex = this.currentIndex
-
-        if (existingIndex !== -1) {
-            nextQueue.splice(existingIndex, 1)
-            if (existingIndex < nextIndex) {
-                nextIndex--
-            }
-        }
-
-        if (nextQueue.length === 0 || nextIndex === -1) {
-            this.playlist = [track]
-            this.currentIndex = 0
-            this.#saveDebounced()
-            return
-        }
-
-        nextQueue.splice(nextIndex + 1, 0, track)
-        this.playlist = nextQueue
-        this.currentIndex = nextIndex
-        this.#saveDebounced()
+    async playTrackInQueue(index: number) {
+        await invoke('play_queue_track', { index })
     }
 
-    removeTrack(id: string) {
-        const removeIndex = this.playlist.findIndex(t => t.id === id)
-        if (removeIndex === -1) return
-
-        const isCurrent = removeIndex === this.currentIndex
-        const nextQueue = this.playlist.filter(t => t.id !== id)
-
-        if (nextQueue.length === 0) {
-            this.playlist = []
-            this.currentIndex = -1
-            this.playing = false
-            this.playbackHistory = []
-            this.#clearMediaSession()
-            this.#stopPolling()
-            invoke('toggle_music').catch(console.error)
-            this.#saveDebounced()
-            return
-        }
-
-        if (isCurrent) {
-            const nextIndex = Math.min(removeIndex, nextQueue.length - 1)
-            this.playlist = nextQueue
-            this.currentIndex = nextIndex
-            void this.#loadAndPlay()
-            this.#saveDebounced()
-            return
-        }
-
-        let nextIndex = this.currentIndex
-        if (removeIndex < nextIndex) {
-            nextIndex--
-        }
-        this.playlist = nextQueue
-        this.currentIndex = nextIndex
-        this.#saveDebounced()
+    async cyclePlayMode() {
+        const modes: PlayMode[] = ['ListLoop', 'SingleLoop', 'Shuffle']
+        const index = modes.indexOf(this.queue.playMode)
+        const mode = modes[(index + 1) % modes.length]
+        await invoke('set_play_mode', { mode })
     }
 
-    playTrackInQueue(index: number) {
-        if (index < 0 || index >= this.playlist.length) return
-        this.currentIndex = index
-        void this.#loadAndPlay()
-        this.#saveDebounced()
+    async clearQueue() {
+        await invoke('clear_queue')
     }
 
-    cyclePlayMode() {
-        const modes: PlayMode[] = ['list', 'single', 'shuffle']
-        const currentModeIndex = modes.indexOf(this.playMode)
-        this.playMode = modes[(currentModeIndex + 1) % modes.length]
-        this.#saveDebounced()
+    async next() {
+        await invoke('play_next_track')
     }
 
-    toggleQueue() {
-        this.queueOpen = !this.queueOpen
-    }
-
-    #getNextIndex(): number {
-        if (this.playlist.length <= 1) return 0
-        if (this.playMode === 'shuffle') {
-            let nextIndex = this.currentIndex
-            while (nextIndex === this.currentIndex) {
-                nextIndex = Math.floor(Math.random() * this.playlist.length)
-            }
-            return nextIndex
-        }
-        return this.currentIndex >= this.playlist.length - 1 ? 0 : this.currentIndex + 1
-    }
-
-    #getPrevIndex(): number {
-        if (this.playlist.length <= 1) return 0
-        if (this.playMode === 'shuffle') {
-            let prevIndex = this.currentIndex
-            while (prevIndex === this.currentIndex) {
-                prevIndex = Math.floor(Math.random() * this.playlist.length)
-            }
-            return prevIndex
-        }
-        return this.currentIndex <= 0 ? this.playlist.length - 1 : this.currentIndex - 1
-    }
-
-    next() {
-        if (this.playlist.length === 0) return
-        const current = this.currentTrack
-        if (current) {
-            this.playbackHistory.push(current.id)
-        }
-        this.currentIndex = this.#getNextIndex()
-        void this.#loadAndPlay()
-        this.#saveDebounced()
-    }
-
-    prev() {
-        if (this.playlist.length === 0) return
-        if (this.playbackHistory.length > 0) {
-            const lastId = this.playbackHistory.pop()
-            const index = this.playlist.findIndex(t => t.id === lastId)
-            if (index !== -1) {
-                this.currentIndex = index
-                void this.#loadAndPlay()
-                this.#saveDebounced()
-                return
-            }
-        }
-        this.currentIndex = this.#getPrevIndex()
-        void this.#loadAndPlay()
-        this.#saveDebounced()
+    async prev() {
+        await invoke('play_previous_track')
     }
 
     resume = async () => {
         try {
-            await invoke('resume_music')
-            this.playing = true
-            this.#syncMediaSession()
-            this.#startPolling()
+            await invoke('resume_track')
         } catch (err) {
             console.error(err)
         }
@@ -314,10 +172,7 @@ class Player {
 
     pause = async () => {
         try {
-            await invoke('pause_music')
-            this.playing = false
-            this.#syncMediaSession()
-            this.#stopPolling()
+            await invoke('pause_track')
         } catch (err) {
             console.error(err)
         }
@@ -332,121 +187,95 @@ class Player {
     }
 
     seek = async (time: number) => {
-        this.#stopPolling()
         await invoke('set_current_time', { time })
-        this.currentTime = time
-        this.#updatePositionState()
-        if (this.playing) {
-            this.#startPolling()
-        }
+    }
+
+    toggleQueue() {
+        this.queueOpen = !this.queueOpen
     }
 
     async loadState() {
-        try {
-            const store = await this.#getStore()
-            const playlist = await store.get<Track[]>("playlist")
-            const currentIndex = await store.get<number>("currentIndex")
-            const playMode = await store.get<PlayMode>("playMode")
-            const volume = await store.get<number>("volume")
+        await this.#setupPlaybackListeners()
 
-            if (playlist && playlist.length > 0) {
-                this.playlist = playlist
-            }
-            if (typeof currentIndex === "number" && currentIndex >= 0) {
-                this.currentIndex = currentIndex
-            }
-            if (playMode) {
-                this.playMode = playMode
-            }
-            if (typeof volume === "number") {
-                this.#volume = volume
-                invoke('set_volume', { volume }).catch(console.error)
-            }
+        try {
+            const queue = await invoke<PlaybackQueue>('get_playback_queue')
+            this.queue = queue
+
+            const status = await invoke<PlaybackStatusSnapshot>('get_current_status')
+            this.playing = status.playing
+            this.currentTime = status.currentTime
+            this.#syncMediaSession()
         } catch (err) {
             console.error(err)
+        } finally {
+            this.#isInitialized = true
+            this.#flushEventBuffer()
         }
     }
 
-    async #persist() {
-        try {
-            const store = await this.#getStore()
-            await store.set("playlist", this.playlist.map(t => ({ ...t, cover: null })))
-            await store.set("currentIndex", this.currentIndex)
-            await store.set("playMode", this.playMode)
-            await store.set("volume", this.#volume)
-            await store.save()
-        } catch (err) {
-            console.error(err)
-        }
-    }
-
-    #onTrackStarted(track: Track) {
-        this.playing = true
-        this.#syncMediaSession()
-        recentlyPlayed.add(track)
-    }
-
-    async #loadAndPlay() {
-        const track = this.currentTrack
-        if (!track) return
-
-        const currentToken = ++this.#loadToken
-        this.#stopPolling()
-
-        try {
-            this.currentTime = 0
-            if (track.path) {
-                await invoke('play_music', { fullPath: track.path })
-            } else {
-                await invoke('play_online_music', { url: track.url, id: track.id })
-            }
-
-            if (currentToken !== this.#loadToken) return
-
-            this.#onTrackStarted(track)
-            this.#startPolling()
-        } catch (err) {
-            if (currentToken === this.#loadToken) {
-                this.playing = false
-                console.error(err)
+    #flushEventBuffer() {
+        while (this.#eventBuffer.length > 0) {
+            const event = this.#eventBuffer.shift()
+            if (event) {
+                this.#handleGlobalEvent(event)
             }
         }
     }
 
-    #startPolling = () => {
-        this.#stopPolling()
-        this.#pollTimer = setInterval(async () => {
-            if (!this.playing) {
-                this.#stopPolling()
+    async #setupPlaybackListeners() {
+        if (this.#globalUnlisten) return
+
+        this.#globalUnlisten = await listen<GlobalAppEvent>('global-app-event', event => {
+            if (!this.#isInitialized) {
+                this.#eventBuffer.push(event.payload)
                 return
             }
-            try {
-                this.currentTime = await invoke<number>('current_time')
-                if (this.currentTrack && this.currentTime >= this.currentTrack.duration - 0.5) {
-                    if (this.playMode === 'single') {
-                        this.currentTime = 0
-                        void this.#loadAndPlay()
-                    } else {
-                        this.next()
-                    }
-                }
-            } catch (e) {
-                this.#stopPolling()
-            }
-        }, 250)
+            this.#handleGlobalEvent(event.payload)
+        })
     }
 
-    #stopPolling = () => {
-        if (this.#pollTimer) {
-            clearInterval(this.#pollTimer)
-            this.#pollTimer = null
+    #handleGlobalEvent(payload: GlobalAppEvent) {
+        const { type, payload: data } = payload
+
+        switch (type) {
+            case 'PlaybackProgress':
+                this.currentTime = data.currentTime
+                this.#updatePositionState()
+                break
+
+            case 'TrackStarted':
+                this.currentTime = 0
+                this.playing = true
+                this.queue = { ...this.queue, currentIndex: data.index }
+                this.#syncMediaSession()
+                recentlyPlayed.add(data.track)
+                break
+
+            case 'VolumeChanged':
+                this.#volume = Math.round(data * 100)
+                this.#muted = this.#volume === 0
+                break
+
+            case 'QueueChanged':
+                this.queue = data
+                break
+
+            case 'PlaybackStateChanged':
+                this.playing = data.playing
+                this.currentTime = data.currentTime
+                this.#syncMediaSession()
+                break
+
+            case 'LyricsLoaded':
+                lyrics.handleLyricsLoaded(data.songId, data.lines)
+                break
         }
     }
 
     destroy() {
-        this.#stopPolling()
-        if (this.#debounceTimer) {
-            clearTimeout(this.#debounceTimer)
+        if (this.#globalUnlisten) {
+            this.#globalUnlisten()
+            this.#globalUnlisten = null
         }
     }
 }

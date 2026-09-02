@@ -6,9 +6,8 @@
     import SettingsRow from '$lib/features/settings/SettingsRow.svelte'
     import SettingsSection from '$lib/features/settings/SettingsSection.svelte'
     import { settings } from '$lib/state/settings.svelte'
-    import type { ThemeMode } from '$lib/types'
-    import { importMusicDirectory, removeMusicDirectory } from '$lib/utils/library'
-    import { onMount } from 'svelte'
+    import type { ThemeMode, PluginLogLevel } from '$lib/types'
+    import { scanDirectory, removeMusicDirectory } from '$lib/utils/library'
 
     import { setTheme } from '@tauri-apps/api/app'
     import 'mdui/components/circular-progress.js'
@@ -21,13 +20,17 @@
         { label: '深色模式', value: 'dark' },
     ]
 
-    onMount(() => {
-        void settings.load()
-    })
+    const logLevelOptions: { label: string; value: PluginLogLevel }[] = [
+        { label: '关闭', value: 'off' },
+        { label: '错误', value: 'error' },
+        { label: '警告', value: 'warn' },
+        { label: '信息', value: 'info' },
+        { label: '调试', value: 'debug' },
+    ]
 
     function handleSwitchChange(
         event: Event,
-        key: 'scanOnStartup' | 'reduceMotion',
+        key: 'scanOnStartup' | 'reduceMotion' | 'pluginScanOnStartup' | 'pluginDevMode',
     ) {
         const target = event.currentTarget as HTMLElement & {
             checked: boolean
@@ -110,7 +113,7 @@
                 </div>
 
                 <div class="flex">
-                    <Button variant="tonal" onclick={importMusicDirectory}>
+                    <Button variant="tonal" onclick={scanDirectory}>
                         添加本地文件夹
                     </Button>
                 </div>
@@ -134,6 +137,113 @@
                         class="rounded-2xl border border-dashed border-[rgb(var(--mdui-color-outline-variant))] p-4 text-sm text-[rgb(var(--mdui-color-on-surface-variant))]"
                     >
                         暂未添加媒体库目录，应用将无法扫描到任何歌曲。
+                    </div>
+                {/if}
+            </div>
+        </SettingsSection>
+
+        <SettingsSection title="插件">
+            <SettingsRow
+                title="启动时扫描插件"
+                description="应用启动时自动发现并加载插件"
+            >
+                <mdui-switch
+                    checked={settings.data?.pluginScanOnStartup}
+                    onchange={(event: Event) =>
+                        handleSwitchChange(event, 'pluginScanOnStartup')}
+                ></mdui-switch>
+            </SettingsRow>
+
+            <SettingsRow
+                title="开发者模式"
+                description="启用插件开发调试功能"
+            >
+                <mdui-switch
+                    checked={settings.data?.pluginDevMode}
+                    onchange={(event: Event) =>
+                        handleSwitchChange(event, 'pluginDevMode')}
+                ></mdui-switch>
+            </SettingsRow>
+
+            <SettingsRow
+                title="插件日志级别"
+                description="设置插件系统的日志输出级别"
+            >
+                <div class="w-48">
+                    <Select
+                        value={settings.data?.pluginLogLevel}
+                        options={logLevelOptions}
+                        onchange={value =>
+                            settings.update({
+                                pluginLogLevel: value as PluginLogLevel,
+                            })}
+                    />
+                </div>
+            </SettingsRow>
+
+            <div class="grid gap-3">
+                <div>
+                    <div class="text-sm font-medium">插件目录</div>
+                    <div
+                        class="text-xs text-[rgb(var(--mdui-color-on-surface-variant))]"
+                    >
+                        管理应用扫描插件的本地文件夹
+                    </div>
+                </div>
+
+                <div class="flex">
+                    <Button
+                        variant="tonal"
+                        onclick={async () => {
+                            const { open } = await import(
+                                '@tauri-apps/plugin-dialog'
+                            )
+                            const selected = await open({
+                                directory: true,
+                                multiple: false,
+                            })
+                            if (
+                                selected &&
+                                typeof selected === 'string' &&
+                                !settings.data?.pluginDirs?.includes(selected)
+                            ) {
+                                settings.update({
+                                    pluginDirs: [
+                                        ...(settings.data?.pluginDirs ?? []),
+                                        selected,
+                                    ],
+                                })
+                            }
+                        }}
+                    >
+                        添加插件目录
+                    </Button>
+                </div>
+
+                {#if settings.data?.pluginDirs?.length > 0}
+                    <div class="grid gap-2 mt-2">
+                        {#each settings.data.pluginDirs as dir (dir)}
+                            <SettingsListItem title={dir}>
+                                <Button
+                                    variant="text"
+                                    onclick={() =>
+                                        settings.update({
+                                            pluginDirs:
+                                                settings.data.pluginDirs.filter(
+                                                    (d) => d !== dir,
+                                                ),
+                                        })}
+                                >
+                                    <span class="text-red-500">移除</span>
+                                </Button>
+                            </SettingsListItem>
+                        {/each}
+                    </div>
+                {:else}
+                    <div
+                        class="rounded-2xl border border-dashed border-[rgb(var(--mdui-color-outline-variant))] p-4 text-sm text-[rgb(var(--mdui-color-on-surface-variant))]"
+                    >
+                        暂未添加插件目录。
                     </div>
                 {/if}
             </div>

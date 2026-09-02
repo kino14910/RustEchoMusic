@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { SvelteMap } from 'svelte/reactivity'
 import type { Album, Artist, Track } from '../types/music'
 import { settings } from './settings.svelte'
 
@@ -7,20 +8,25 @@ class MusicLibrary {
     tracks = $state<Track[]>([])
     isLoading = $state(false)
     error = $state<string | null>(null)
-    useAlbumArtistGrouping = $state(false)
     initialized = false
 
-    private refreshPromise: Promise<Track[]> | null = null
+    get useAlbumArtistGrouping() {
+        return settings.data.useAlbumArtistGrouping ?? false
+    }
+
+    #unlisten: UnlistenFn | null = null
+    
+    #refreshPromise: Promise<Track[]> | null = null
     #albumsMap = $derived.by(() => {
-        const albumMap = new Map<string, Album>()
+        const albumMap = new SvelteMap<string, Album>()
         const useAlbumArtistGrouping = this.useAlbumArtistGrouping
 
         for (const track of this.tracks) {
             const albumTitle = track.album?.trim() || '未知专辑'
 
-            const albumOwner = track.albumArtist?.trim() || track.artist?.trim() || '未知歌手'
+            const artistName = track.artist?.trim() || '未知歌手'
             const albumKey = useAlbumArtistGrouping
-                ? `${albumOwner}_${albumTitle}`.toLowerCase()
+                ? `${artistName}_${albumTitle}`.toLowerCase()
                 : albumTitle.toLowerCase()
             const id = encodeURIComponent(albumKey)
 
@@ -28,7 +34,7 @@ class MusicLibrary {
                 albumMap.set(id, {
                     id,
                     title: albumTitle,
-                    artist: albumOwner,
+                    artist: artistName,
                     tracks: [],
                     cover: track.cover ?? null,
                     trackCount: 0,
@@ -49,7 +55,7 @@ class MusicLibrary {
     })
 
     #artistsMap = $derived.by(() => {
-        const artistMap = new Map<
+        const artistMap = new SvelteMap<
             string,
             Artist & {
                 albumKeys: Set<string>
@@ -89,7 +95,7 @@ class MusicLibrary {
             }
         }
 
-        return new Map(
+        return new SvelteMap(
             Array.from(artistMap.values()).map(({ albumKeys, ...artist }) => [
                 artist.id,
                 artist,
@@ -98,8 +104,7 @@ class MusicLibrary {
     })
 
     constructor() {
-        this.useAlbumArtistGrouping = settings.data.useAlbumArtistGrouping ?? false
-        void this.setupListener()
+        void this.#setupListener()
     }
 
     get albums(): Album[] {
@@ -130,8 +135,10 @@ class MusicLibrary {
         return this.#artistsMap.get(id)
     }
 
-    private async setupListener() {
-        await listen<Track[]>('library:refreshed', event => {
+    async #setupListener() {
+        if (this.#unlisten) return
+        
+        this.#unlisten = await listen<Track[]>('library:refreshed', event => {
             this.tracks = event.payload
         })
     }
@@ -139,8 +146,8 @@ class MusicLibrary {
     async load(options: { force?: boolean } = {}): Promise<Track[]> {
         const { force = false } = options
 
-        if (this.refreshPromise) {
-            return this.refreshPromise
+        if (this.#refreshPromise) {
+            return this.#refreshPromise
         }
 
         if (!force && this.tracks.length > 0) {
@@ -150,9 +157,9 @@ class MusicLibrary {
         this.isLoading = true
         this.error = null
 
-        this.refreshPromise = (async () => {
+        this.#refreshPromise = (async () => {
             try {
-                const tracks = await invoke<Track[]>('load_music_library')
+                const tracks = await invoke<Track[]>('load_track_library')
                 this.tracks = tracks
                 return tracks
             } catch (err) {
@@ -161,11 +168,11 @@ class MusicLibrary {
                 return this.tracks
             } finally {
                 this.isLoading = false
-                this.refreshPromise = null
+                this.#refreshPromise = null
             }
         })()
 
-        return this.refreshPromise
+        return this.#refreshPromise
     }
 
     async scan(): Promise<Track[]> {
@@ -173,7 +180,7 @@ class MusicLibrary {
             this.isLoading = true
             this.error = null
 
-            const tracks = await invoke<Track[]>('scan_music_directories', {
+            const tracks = await invoke<Track[]>('scan_track_directories', {
                 dirs: settings.data.libraryDirs,
             })
 
@@ -186,6 +193,13 @@ class MusicLibrary {
             return this.tracks
         } finally {
             this.isLoading = false
+        }
+    }
+    
+    destroy() {
+        if (this.#unlisten) {
+            this.#unlisten()
+            this.#unlisten = null
         }
     }
 }

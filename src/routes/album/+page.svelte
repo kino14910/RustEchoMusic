@@ -5,7 +5,7 @@
     import MediaGrid, {
         type MediaGridItem,
     } from '$lib/components/media/MediaGrid.svelte'
-    import TrackList from '$lib/features/TrackList.svelte'
+    import TrackList from '$lib/features/track-list/TrackList.svelte'
     import { trackCovers } from '$lib/state/covers.svelte'
     import { musicLibrary } from '$lib/state/library.svelte'
     import { player } from '$lib/state/player.svelte'
@@ -46,7 +46,7 @@
               )
             : albums
 
-        return [...list].sort((a, b) => collator.compare(a.title, b.title))
+        return list.toSorted((a, b) => collator.compare(a.title, b.title))
     })
 
     const albumGridItems = $derived(
@@ -54,17 +54,13 @@
             id: album.id,
             title: album.title,
             subtitle: `${album.trackCount} 首歌曲`,
-            image:
-                trackCovers.get(album.representativeTrack) ?? album.cover,
+            image: trackCovers.get(album.representativeTrack) ?? album.cover,
             shape: 'square' as const,
+            onvisible: () => {
+                void trackCovers.load(album.representativeTrack)
+            },
         })),
     )
-
-    $effect(() => {
-        for (const album of filteredAlbums) {
-            void trackCovers.load(album.representativeTrack)
-        }
-    })
 
     function playAll(tracks: Track[]) {
         if (tracks.length === 0) return
@@ -74,32 +70,22 @@
     function selectAlbumItem(item: MediaGridItem) {
         const album = musicLibrary.getAlbum(String(item.id))
         if (album === undefined) return
-
         selectedAlbumId = album.id
     }
 
     function playAlbumItem(item: MediaGridItem, event: Event) {
         event.preventDefault()
         event.stopPropagation()
-
         const album = musicLibrary.getAlbum(String(item.id))
         if (album === undefined) return
-
         playAll(album.tracks)
     }
 
-    async function handleAlbumArtistGroupingChange(event: Event) {
-        const checked = (
-            event.currentTarget as HTMLElement & { checked: boolean }
-        ).checked
-
-        if (checked === musicLibrary.useAlbumArtistGrouping) return
-
-        musicLibrary.useAlbumArtistGrouping = checked
-        settings.data.useAlbumArtistGrouping = checked
+    function handleAlbumArtistGroupingChange(event: Event) {
+        const checked = (event.currentTarget as HTMLInputElement).checked
+        if (checked === settings.data.useAlbumArtistGrouping) return
+        settings.update({ useAlbumArtistGrouping: checked })
         selectedAlbumId = null
-
-        await settings.save()
     }
 </script>
 
@@ -153,16 +139,11 @@
                     {:else}
                         <mdui-list>
                             {#each filteredAlbums as album (album.id)}
-                                {@const cover =
-                                    trackCovers.get(
-                                        album.representativeTrack,
-                                    ) ?? album.cover}
+                                {@const cover = trackCovers.get(album.representativeTrack) ?? album.cover}
                                 <mdui-list-item
                                     headline={album.title}
                                     description={`${album.trackCount} 首歌曲`}
-                                    onclick={() => {
-                                        selectedAlbumId = album.id
-                                    }}
+                                    onclick={() => { selectedAlbumId = album.id }}
                                     onkeydown={(e: KeyboardEvent) =>
                                         (e.key === 'Enter' || e.key === ' ') &&
                                         (selectedAlbumId = album.id)}
@@ -170,17 +151,9 @@
                                     tabindex="0"
                                 >
                                     {#if cover}
-                                        <img
-                                            src={cover}
-                                            slot="icon"
-                                            class="w-10 h-10 rounded object-cover shrink-0"
-                                            alt=""
-                                        />
+                                        <img src={cover} slot="icon" class="w-10 h-10 rounded object-cover shrink-0" alt="" />
                                     {:else}
-                                        <div
-                                            slot="icon"
-                                            class="w-10 h-10 rounded bg-[rgb(var(--mdui-color-surface-container-highest))] flex items-center justify-center text-lg shrink-0"
-                                        >
+                                        <div slot="icon" class="w-10 h-10 rounded bg-[rgb(var(--mdui-color-surface-container-highest))] flex items-center justify-center text-lg shrink-0">
                                             🎵
                                         </div>
                                     {/if}
@@ -191,24 +164,16 @@
                 </div>
             {:else}
                 <div class="flex-1 flex flex-col overflow-hidden min-h-0">
-                    <div
-                        class="flex items-center gap-3 py-3 border-b border-[rgb(var(--mdui-color-outline-variant))] shrink-0"
-                    >
+                    <div class="flex items-center gap-3 py-3 border-b border-[rgb(var(--mdui-color-outline-variant))] shrink-0">
                         <IconButton
                             icon="arrow_back--rounded"
-                            onclick={() => {
-                                selectedAlbumId = null
-                            }}
+                            onclick={() => { selectedAlbumId = null }}
                         />
                         <div class="flex-1 min-w-0">
-                            <h2
-                                class="text-base font-semibold truncate text-[rgb(var(--mdui-color-on-surface))]"
-                            >
+                            <h2 class="text-base font-semibold truncate text-[rgb(var(--mdui-color-on-surface))]">
                                 {selectedAlbum.title}
                             </h2>
-                            <p
-                                class="text-xs text-[rgb(var(--mdui-color-on-surface-variant))]"
-                            >
+                            <p class="text-xs text-[rgb(var(--mdui-color-on-surface-variant))]">
                                 {selectedAlbum.trackCount} 首歌曲
                             </p>
                         </div>
@@ -235,9 +200,7 @@
             </div>
             <div class="flex-1 flex flex-col overflow-hidden min-h-0">
                 {#if selectedAlbum === undefined}
-                    <div
-                        class="flex-1 flex flex-col items-center justify-center text-[rgb(var(--mdui-color-on-surface-variant))]"
-                    >
+                    <div class="flex-1 flex flex-col items-center justify-center text-[rgb(var(--mdui-color-on-surface-variant))]">
                         <span class="text-5xl mb-2">🎵</span>
                         <span class="text-sm">选择一个专辑以查看歌曲</span>
                     </div>
