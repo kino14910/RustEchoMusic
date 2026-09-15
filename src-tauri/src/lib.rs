@@ -200,7 +200,9 @@ pub fn run() {
             let settings_item = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let tray_menu = Menu::with_items(app, &[&settings_item, &quit_item])?;
+            let play_item = MenuItem::with_id(app, "play", "播放/暂停", true, Some("Space"))?;
             let file_menu = SubmenuBuilder::new(app, "文件")
+                .item(&play_item)
                 .text("quit", "退出")
                 .build()?;
 

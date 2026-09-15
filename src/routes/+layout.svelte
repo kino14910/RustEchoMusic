@@ -42,11 +42,13 @@
         void recentlyPlayed.load()
         void musicLibrary.load().then(tracks => {
             if (!tracks || tracks.length === 0) return
-            const BATCH = 10
+            const WARMUP_LIMIT = 24
+            const BATCH = 12
             const DELAY = 50
+            const warmup = tracks.slice(0, WARMUP_LIMIT)
             let i = 0
             const loadNext = () => {
-                const batch = tracks.slice(i, i + BATCH)
+                const batch = warmup.slice(i, i + BATCH)
                 if (batch.length === 0) return
                 for (const track of batch) {
                     void trackCovers.load(track)

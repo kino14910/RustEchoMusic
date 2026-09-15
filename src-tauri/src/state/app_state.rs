@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use plugin_runtime::PluginRuntime;
 use crate::services::plugin::AudioProcessorRegistry;
-use crate::services::{PlaylistService, SettingsService, TrackService};
+use crate::services::{CoverCache, PlaylistService, SettingsService, TrackService};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -11,6 +11,7 @@ pub struct AppState {
     pub settings: Arc<SettingsService>,
     pub plugins: Arc<PluginRuntime>,
     pub audio_processor_registry: Arc<AudioProcessorRegistry>,
+    pub covers: Arc<CoverCache>,
 }
 
 impl AppState {
@@ -27,6 +28,7 @@ impl AppState {
             settings,
             plugins,
             audio_processor_registry,
+            covers: Arc::new(CoverCache::new()),
         }
     }
 

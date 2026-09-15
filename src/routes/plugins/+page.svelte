@@ -50,7 +50,7 @@
                 {@const state = ext?.state ?? 'Enabled'}
                 <button
                     type="button"
-                    class="flex items-center gap-4 rounded-2xl bg-[rgb(var(--mdui-color-surface-container))] p-5 text-left transition-colors hover:bg-[rgb(var(--mdui-color-surface-container-high))]"
+                    class="flex items-center gap-4 border-0 rounded-2xl bg-[rgb(var(--mdui-color-surface-container))] p-5 text-left transition-colors hover:bg-[rgb(var(--mdui-color-surface-container-high))]"
                     onclick={() => handlePluginClick(manifest.route)}
                     onkeydown={(e: KeyboardEvent) => {
                         if (e.key === 'Enter' || e.key === ' ') {

@@ -26,7 +26,16 @@
 </svelte:head>
 
 <section class="flex h-full min-h-0 flex-col gap-6 overflow-auto pb-10">
-    <Heading eyebrow="Plugins · Kernel" title="插件内核与贡献点" />
+        <div class="flex items-center gap-4">
+        <a
+            href="/plugins"
+            class="flex h-10 w-10 items-center justify-center rounded-full hover:bg-[rgb(var(--mdui-color-surface-container))]"
+            title="plugins"
+        >
+            <mdui-icon name="arrow_back"></mdui-icon>
+        </a>
+        <Heading eyebrow="Plugins · Kernel" title="插件内核与贡献点" />
+    </div>
 
     <div class="flex flex-1 items-center justify-center" class:hidden={!pluginState.kernelLoading}>
         <mdui-circular-progress></mdui-circular-progress>

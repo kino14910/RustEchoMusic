@@ -67,18 +67,18 @@
 
     let sortedCache: Track[] = []
     let lastSortBy: SortBy = 'title'
-    let lastTrackLength = 0
+    let lastTracks: Track[] | null = null
 
     const defaultSortedTracks = $derived.by(() => {
         const tracks = musicLibrary.tracks
-        if (sortBy === lastSortBy && tracks.length === lastTrackLength && sortedCache.length > 0) {
+        if (tracks === lastTracks && sortBy === lastSortBy && sortedCache.length > 0) {
             return sortedCache
         }
         sortedCache = tracks.toSorted((a, b) =>
             collator.compare(a[sortBy] ?? '', b[sortBy] ?? ''),
         )
         lastSortBy = sortBy
-        lastTrackLength = tracks.length
+        lastTracks = tracks
         return sortedCache
     })
 
@@ -86,8 +86,10 @@
         searchQuery ? searchResults : defaultSortedTracks,
     )
 
+    const selectedIdSet = $derived(new Set(selectedTrackIds))
+
     const selectedTracks = $derived(
-        displayTracks.filter(track => selectedTrackIds.includes(track.id)),
+        displayTracks.filter(track => selectedIdSet.has(track.id)),
     )
 
     function appendTracksToPlaylist(tracks: Track[]) {
@@ -135,9 +137,8 @@
     }
 
     function removeSelectedFromCurrentList() {
-        const selectedIds = new Set(selectedTrackIds)
         musicLibrary.tracks = musicLibrary.tracks.filter(
-            track => !selectedIds.has(track.id),
+            track => !selectedIdSet.has(track.id),
         )
         closeBatchMode()
     }

@@ -12,6 +12,7 @@ use crate::commands::playback::remove_track_from_queue;
 use crate::errors::AppError;
 use crate::metadata::parse_single_track;
 use crate::models::{NewTrack, Track};
+use crate::services::cover_cache::file_fingerprint;
 use crate::state::AppState;
 
 const SUPPORTED_EXT: [&str; 5] = ["mp3", "flac", "m4a", "wav", "ogg"];
@@ -80,6 +81,21 @@ async fn upsert_scanned_tracks(
         .await
 }
 
+fn extract_cover(file_path: &Path) -> Option<String> {
+    let tagged_file = Probe::open(file_path).ok()?.read().ok()?;
+
+    let tag = tagged_file
+        .primary_tag()
+        .or_else(|| tagged_file.first_tag());
+
+    let picture = tag?.pictures().first()?.clone();
+
+    let b64_encoded = general_purpose::STANDARD.encode(picture.data());
+    let mime_type = picture.mime_type().map(|m| m.as_str()).unwrap_or("image/jpeg");
+
+    Some(format!("data:{};base64,{}", mime_type, b64_encoded))
+}
+
 #[command]
 pub async fn get_track_cover(track_id: i64, state: State<'_, AppState>) -> Result<Option<String>, AppError> {
     let track = state.tracks.get_track(track_id).await?;
@@ -94,21 +110,22 @@ pub async fn get_track_cover(track_id: i64, state: State<'_, AppState>) -> Resul
         return Err("音频文件不存在".into());
     }
 
-    let tagged_file = Probe::open(file_path)
-        .map_err(|e| e.to_string())?
-        .read()
+    let fingerprint = file_fingerprint(file_path);
+
+    if let Some(fp) = fingerprint {
+        if let Some(cached) = state.covers.get(track_id, fp) {
+            return Ok(cached);
+        }
+    }
+
+    let owned_path = file_path.to_path_buf();
+    let cover = tauri::async_runtime::spawn_blocking(move || extract_cover(&owned_path))
+        .await
         .map_err(|e| e.to_string())?;
 
-    let tag = tagged_file
-        .primary_tag()
-        .or_else(|| tagged_file.first_tag());
-
-    let cover = tag.and_then(|t| t.pictures().first()).map(|pic| {
-        let b64_encoded = general_purpose::STANDARD.encode(pic.data());
-        let mime_type = pic.mime_type().map(|m| m.as_str()).unwrap_or("image/jpeg");
-
-        format!("data:{};base64,{}", mime_type, b64_encoded)
-    });
+    if let Some(fp) = fingerprint {
+        state.covers.insert(track_id, fp, cover.clone());
+    }
 
     Ok(cover)
 }
