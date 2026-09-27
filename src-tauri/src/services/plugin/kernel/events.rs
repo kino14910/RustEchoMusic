@@ -11,11 +11,12 @@ pub fn app_event_to_host_event(event: &AppEvent) -> Option<(EventType, Value)> {
         AppEvent::PlaybackStateChanged(_) => playback_state(),
         AppEvent::QueueChanged(_) => queue_changed(),
         AppEvent::SettingsChanged(_) => settings_changed(),
+        // 插件 emit 的事件只出站到应用总线（`EventSink::notify` 不 dispatch），
+        // 因此歌词必须在这里再映射回插件总线，否则第三方插件永远收不到歌词。
+        AppEvent::LyricsLoaded(_) => lyrics_loaded(),
         // 音量与播放进度是高频事件（进度每秒多次），投送给插件收益低、
         // 不回灌，避免插件 A 的事件触发插件 A。
-        AppEvent::VolumeChanged(_)
-        | AppEvent::PlaybackProgress(_)
-        | AppEvent::LyricsLoaded(_) => return None,
+        AppEvent::VolumeChanged(_) | AppEvent::PlaybackProgress(_) => return None,
     };
 
     let payload = match event {
@@ -35,6 +36,17 @@ pub fn app_event_to_host_event(event: &AppEvent) -> Option<(EventType, Value)> {
         }),
         AppEvent::SettingsChanged(settings) => json!({
             "theme": settings.theme.as_str(),
+        }),
+        AppEvent::LyricsLoaded(payload) => json!({
+            "songId": payload.song_id,
+            "lines": payload
+                .lines
+                .iter()
+                .map(|line| json!({
+                    "timestampMs": line.timestamp_ms,
+                    "text": line.text,
+                }))
+                .collect::<Vec<_>>(),
         }),
         _ => Value::Null,
     };

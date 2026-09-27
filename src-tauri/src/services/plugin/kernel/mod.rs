@@ -7,10 +7,12 @@ use std::sync::Arc;
 
 use plugin_runtime::{DirectoryLocator, PluginRuntime};
 use plugin_sdk::{
-    capabilities, services, ActivationContext, EventPattern, HostEvent, HostEventsApi,
-    InvokeContext, LibraryApi as LibraryContract, Manifest, PluginId, PluginResult, Plugin,
-    PluginSettingsApi, PluginStorageApi, ServiceDescriptor, ServiceHandle, Version,
+    capabilities, services, ActivationContext, DesktopWindowApi, EventPattern, HostEvent,
+    HostEventsApi, InvokeContext, LibraryApi as LibraryContract, Manifest, PluginId, PluginResult,
+    Plugin, PluginSettingsApi, PluginStorageApi, ServiceDescriptor, ServiceHandle, Version,
 };
+
+use tauri::AppHandle;
 
 use crate::services::playback_service::PlaybackService;
 use crate::services::plugin::settings::settings_registry::SettingsRegistry;
@@ -18,12 +20,12 @@ use crate::services::settings_service::SettingsService;
 use crate::services::track_service::TrackService;
 
 use host_services::{
-    HostAudio, HostLibrary, HostPlayerControl, HostPlayerState, HostPluginEvents,
-    HostPluginSettings, HostPluginStorage, HostQueue, HostRecent, HostSettings,
+    HostAudio, HostDesktopWindow, HostLibrary, HostPlayerControl, HostPlayerState,
+    HostPluginEvents, HostPluginSettings, HostPluginStorage, HostQueue, HostRecent, HostSettings,
 };
 use json_views::{
-    EqualizerJson, LibraryJson, PlayerControlJson, PlayerStateJson, QueueJson, RecentReadJson,
-    RecentWriteJson, SettingsJson,
+    DesktopWindowJson, EqualizerJson, LibraryJson, PlayerControlJson, PlayerStateJson, QueueJson,
+    RecentReadJson, RecentWriteJson, SettingsJson,
 };
 
 use plugin_sdk::{
@@ -42,6 +44,7 @@ pub struct HostDeps {
     pub app_data_dir: PathBuf,
     pub recent: Arc<crate::repositories::sqlite::SqliteRecentRepository>,
     pub packaged_dir: Option<PathBuf>,
+    pub app_handle: AppHandle,
 }
 
 pub fn build_runtime(deps: HostDeps) -> PluginRuntime {
@@ -182,6 +185,15 @@ fn register_host_services(runtime: &PluginRuntime, deps: &HostDeps) {
                 Arc::clone(&audio) as Arc<dyn EqualizerContract>
             )),
         ),
+        runtime.provide_host_service(
+            ServiceDescriptor::new(services::desktop_window(), HOST_SERVICE_VERSION)
+                .requiring(capabilities::desktop_window())
+                .with_summary("桌面悬浮窗"),
+            Arc::new(ServiceHandle::new(
+                Arc::new(HostDesktopWindow::new(deps.app_handle.clone()))
+                    as Arc<dyn DesktopWindowApi>
+            )),
+        ),
     ];
     for result in registered {
         if let Err(error) = result {
@@ -197,6 +209,9 @@ fn register_host_services(runtime: &PluginRuntime, deps: &HostDeps) {
     runtime.provide_host_json_service(Arc::new(RecentReadJson(Arc::clone(&recent))));
     runtime.provide_host_json_service(Arc::new(RecentWriteJson(Arc::clone(&recent))));
     runtime.provide_host_json_service(Arc::new(EqualizerJson));
+    runtime.provide_host_json_service(Arc::new(DesktopWindowJson(Arc::new(
+        HostDesktopWindow::new(deps.app_handle.clone()),
+    ))));
 }
 
 fn register_per_plugin_services(runtime: &PluginRuntime, deps: &HostDeps) {

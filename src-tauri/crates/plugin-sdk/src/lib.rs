@@ -18,8 +18,8 @@ pub use manifest::{
     Manifest, PluginSource, PluginTier, ResourceBudget,
 };
 pub use host::{
-    EqualizerApi, HostEventsApi, LibraryApi, PlayerControlApi, PlayerStateApi, PluginSettingsApi,
-    PluginStorageApi, QueueApi, RecentReadApi, RecentWriteApi, SettingsApi,
+    DesktopWindowApi, EqualizerApi, HostEventsApi, LibraryApi, PlayerControlApi, PlayerStateApi,
+    PluginSettingsApi, PluginStorageApi, QueueApi, RecentReadApi, RecentWriteApi, SettingsApi,
 };
 pub use plugin::{
     ActivationContext, ActivationScope, AudioProcessorHandle, AudioProcessorSpec, CommandSpec,
@@ -84,6 +84,9 @@ pub mod capabilities {
     pub fn recent_write() -> Capability {
         Capability::new("recent.write").expect("static capability is valid")
     }
+    pub fn desktop_window() -> Capability {
+        Capability::new("desktop.window").expect("static capability is valid")
+    }
 }
 
 pub mod services {
@@ -127,5 +130,8 @@ pub mod services {
     }
     pub fn events() -> ServiceId {
         ServiceId::new("host.events").expect("static service id is valid")
+    }
+    pub fn desktop_window() -> ServiceId {
+        ServiceId::new("desktop.window").expect("static service id is valid")
     }
 }

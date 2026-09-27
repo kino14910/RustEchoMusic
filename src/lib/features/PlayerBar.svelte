@@ -6,7 +6,67 @@
     import { player } from '$lib/state/player.svelte'
     import { pluginState } from '$lib/state/plugins.svelte'
     import { formatTime } from '$lib/utils'
+    import type { RichContribution } from '$lib/types'
+    import { invoke } from '@tauri-apps/api/core'
     import type { Slider as MduiSliderElement } from 'mdui'
+
+    // 播放器动作按钮由插件通过 `ui.playerAction` 贡献点声明，宿主只认贡献点、
+    // 不认具体插件：谁想往播放条上放按钮，谁自己声明。
+    interface PluginAction {
+        plugin: string
+        id: string
+        icon: string
+        title: string
+        command: string
+        order: number
+    }
+
+    function readPluginAction(contribution: RichContribution): PluginAction | null {
+        const payload = contribution.payload as Record<string, unknown>
+        const data = (
+            payload?.kind === 'extension' &&
+            payload.payload &&
+            typeof payload.payload === 'object'
+                ? payload.payload
+                : payload
+        ) as Record<string, unknown>
+
+        const command = data.command
+        if (typeof command !== 'string' || command.length === 0) return null
+
+        return {
+            plugin: contribution.plugin,
+            id: typeof data.id === 'string' ? data.id : contribution.key,
+            icon: typeof data.icon === 'string' ? data.icon : 'extension',
+            title: typeof data.title === 'string' ? data.title : command,
+            command,
+            order: typeof data.order === 'number' ? data.order : 100,
+        }
+    }
+
+    const pluginActions = $derived(
+        pluginState.contributions
+            .filter(contribution => contribution.point === 'ui.playerAction')
+            .map(readPluginAction)
+            .filter((action): action is PluginAction => action !== null)
+            .sort(
+                (a, b) =>
+                    a.order - b.order || a.plugin.localeCompare(b.plugin) || a.id.localeCompare(b.id),
+            ),
+    )
+
+    async function runPluginAction(action: PluginAction) {
+        try {
+            await invoke('execute_plugin_command', {
+                commandId: action.command,
+                args: 'None',
+            })
+        } catch (error) {
+            console.error('[player-bar] 插件动作执行失败:', action.command, error)
+            // 插件可能刚被禁用/卸载，刷新一次贡献点让按钮跟着消失。
+            void pluginState.loadKernel()
+        }
+    }
 
     let slider = $state<MduiSliderElement | null>(null)
     $effect(() => {
@@ -132,6 +192,15 @@
                 icon={nv.icon ?? 'extension'}
                 onclick={() => toggleNativePanel(nv.pluginId)}
                 class={pluginState.activeNativePanel === nv.pluginId ? 'text-[rgb(var(--mdui-color-primary))]' : 'opacity-70 hover:opacity-100'}
+            />
+        {/each}
+
+        {#each pluginActions as action (action.plugin + action.id)}
+            <IconButton
+                icon={action.icon}
+                title={action.title}
+                onclick={() => runPluginAction(action)}
+                class="opacity-70 hover:opacity-100"
             />
         {/each}
 

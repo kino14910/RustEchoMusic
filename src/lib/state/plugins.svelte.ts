@@ -115,6 +115,7 @@ class PluginState {
     async enablePlugin(pluginId: string) {
         try {
             await invoke('enable_plugin_command', { pluginId })
+            await this.refreshExtensions()
         } catch (err) {
             console.error(err)
             this.error = String(err)
@@ -124,10 +125,22 @@ class PluginState {
     async disablePlugin(pluginId: string) {
         try {
             await invoke('disable_plugin_command', { pluginId })
+            await this.refreshExtensions()
         } catch (err) {
             console.error(err)
             this.error = String(err)
         }
+    }
+
+    // 启用/禁用会改变插件贡献点集合（播放条按钮、侧栏项、原生面板），
+    // 不重新拉一遍这些列表，UI 就会残留到下次重启。
+    async refreshExtensions() {
+        await Promise.all([
+            this.loadManifests(),
+            this.loadSidebarExtensions(),
+            this.loadNativeViewExtensions(),
+            this.loadKernel(),
+        ])
     }
 
     async loadKernel() {

@@ -9,6 +9,8 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "plugins:build": "node scripts/build-packaged-plugins.mjs",
+    "plugins:build:release": "node scripts/build-packaged-plugins.mjs --release",
     "tauri": "tauri"
   },
   "license": "MIT",

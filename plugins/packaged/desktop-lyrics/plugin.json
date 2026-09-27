@@ -1,0 +1,17 @@
+{
+  "schema": 2,
+  "id": "desktop-lyrics",
+  "name": "desktop-lyrics",
+  "displayName": "Desktop Lyrics",
+  "version": "1.0.0",
+  "minHost": "1.0.0",
+  "abi": 2,
+  "author": "RustEchoMusic",
+  "description": "第三方插件：在桌面悬浮窗中显示跟随播放进度的歌词",
+  "entry": "desktop-lyrics",
+  "source": "packaged",
+  "tier": "feature",
+  "capabilities": ["player.read", "player.control", "desktop.window"],
+  "activation": { "eager": true },
+  "dependencies": [{ "plugin": "lyrics", "optional": false }]
+}

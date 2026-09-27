@@ -8,9 +8,11 @@ export type { LyricDocument, LyricLine } from './lyrics'
 export type { Album, Artist, Playlist, Track } from './music'
 export type { BackendQueueTrack, PlayMode, PlaybackProgressPayload, PlaybackStatusSnapshot, PlaybackTrackInfo } from './playback'
 export type {
+    KernelPlugin,
     MenuExtension,
     PluginInfo,
     PluginSetting,
+    RichContribution,
     SettingValue,
     SidebarExtension,
 } from './plugin'

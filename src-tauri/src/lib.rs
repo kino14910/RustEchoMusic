@@ -77,6 +77,20 @@ use crate::errors::AppError;
 
 pub fn init_startup_scan(_app_handle: tauri::AppHandle) {}
 
+fn resolve_packaged_dir(app: &tauri::AppHandle) -> Option<std::path::PathBuf> {
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        let bundled = resource_dir.join("plugins");
+        if bundled.exists() {
+            return Some(bundled);
+        }
+    }
+    let source = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../plugins/packaged");
+    if source.exists() {
+        return Some(source);
+    }
+    None
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -133,7 +147,8 @@ pub fn run() {
                     plugin_settings: Arc::clone(&settings_registry),
                     app_data_dir: app_data_dir.clone(),
                     recent: Arc::clone(&recent_repository),
-                    packaged_dir: None,
+                    packaged_dir: resolve_packaged_dir(&app_handle),
+                    app_handle: app_handle.clone(),
                 })
                 .on_plugin_event(move |event| {
                     services::plugin::kernel::events::host_event_to_app(&sink_handle, event);

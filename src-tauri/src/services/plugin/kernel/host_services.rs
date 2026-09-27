@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use plugin_sdk::{
-    EqualizerApi, HostEvent, LibraryApi as LibraryContract, PlayerControlApi, PlayerStateApi,
-    PluginError, PluginId, PluginResult, QueueApi as QueueContract,
+    DesktopWindowApi, EqualizerApi, HostEvent, LibraryApi as LibraryContract, PlayerControlApi,
+    PlayerStateApi, PluginError, PluginId, PluginResult, QueueApi as QueueContract,
     RecentReadApi as RecentReadContract, RecentWriteApi as RecentWriteContract,
     SettingsApi as SettingsContract,
 };
 use tauri::async_runtime::block_on;
+use tauri::Manager;
 
 use serde_json::json;
 
@@ -272,6 +273,105 @@ impl EqualizerApi for HostAudio {
         with_audio_state(|state| Ok(state.eq_enabled))
             .and_then(|inner| inner)
             .map_err(to_plugin_error)
+    }
+}
+
+// —— 桌面悬浮窗 ——
+//
+// 插件拿不到 AppHandle，也就无法自建窗口；这里把"开一个悬浮窗"做成宿主服务，
+// 由插件声明 `desktop.window` 能力后按需调用。窗口内容指向应用前端的一个路由，
+// 因此 UI 仍由 SvelteKit 页面提供，宿主不掺和业务。
+
+pub const DESKTOP_WINDOW_LABEL: &str = "desktop-overlay";
+
+pub struct HostDesktopWindow {
+    app: tauri::AppHandle,
+}
+
+impl HostDesktopWindow {
+    pub fn new(app: tauri::AppHandle) -> Self {
+        Self { app }
+    }
+
+    fn window(&self) -> Option<tauri::WebviewWindow> {
+        self.app.get_webview_window(DESKTOP_WINDOW_LABEL)
+    }
+}
+
+fn window_error(error: impl std::fmt::Display) -> PluginError {
+    PluginError::io(format!("desktop window: {error}"))
+}
+
+impl DesktopWindowApi for HostDesktopWindow {
+    fn open(
+        &self,
+        route: &str,
+        width: f64,
+        height: f64,
+        x: Option<f64>,
+        y: Option<f64>,
+    ) -> PluginResult<()> {
+        if let Some(window) = self.window() {
+            window.show().map_err(window_error)?;
+            let _ = window.set_focus();
+            return Ok(());
+        }
+
+        let path = route.trim_start_matches('/').to_string();
+        let mut builder = tauri::WebviewWindowBuilder::new(
+            &self.app,
+            DESKTOP_WINDOW_LABEL,
+            tauri::WebviewUrl::App(std::path::PathBuf::from(path)),
+        )
+        .title("Desktop Overlay")
+        .decorations(false)
+        .transparent(true)
+        .shadow(false)
+        .skip_taskbar(true)
+        .resizable(false)
+        .always_on_top(true)
+        .inner_size(width, height);
+
+        if let (Some(x), Some(y)) = (x, y) {
+            builder = builder.position(x, y);
+        }
+
+        builder.build().map_err(window_error)?;
+        Ok(())
+    }
+
+    fn close(&self) -> PluginResult<()> {
+        match self.window() {
+            Some(window) => window.destroy().map_err(window_error),
+            None => Ok(()),
+        }
+    }
+
+    fn is_open(&self) -> PluginResult<bool> {
+        Ok(self
+            .window()
+            .map(|window| window.is_visible().unwrap_or(false))
+            .unwrap_or(false))
+    }
+
+    fn set_bounds(&self, x: f64, y: f64, width: f64, height: f64) -> PluginResult<()> {
+        let window = self
+            .window()
+            .ok_or_else(|| PluginError::not_found("desktop window is not open"))?;
+        window
+            .set_position(tauri::LogicalPosition::new(x, y))
+            .map_err(window_error)?;
+        window
+            .set_size(tauri::LogicalSize::new(width, height))
+            .map_err(window_error)?;
+        Ok(())
+    }
+
+    fn set_always_on_top(&self, on_top: bool) -> PluginResult<()> {
+        let window = self
+            .window()
+            .ok_or_else(|| PluginError::not_found("desktop window is not open"))?;
+        window.set_always_on_top(on_top).map_err(window_error)
     }
 }
 

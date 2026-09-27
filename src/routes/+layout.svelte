@@ -18,8 +18,13 @@
 
     import { goto } from '$app/navigation'
     import { listen } from '@tauri-apps/api/event'
+    import { page } from '$app/state'
 
     let { children } = $props()
+
+    // 桌面悬浮窗由插件经 `desktop.window` 服务打开，它只需要自己的页面，
+    // 应用外壳（导航栏 / 播放条 / 侧栏）在这里会挡住透明窗口。
+    const isOverlayWindow = $derived(page.url.pathname.startsWith('/desktop-lyrics'))
 
     let activeNativeView = $derived(
         pluginState.activeNativePanel
@@ -32,6 +37,8 @@
     )
 
     onMount(() => {
+        if (isOverlayWindow) return
+
         registerBuiltinViews()
         void settings.load()
         void player.loadState()
@@ -91,25 +98,29 @@
     })
 </script>
 
-<mdui-layout full-height>
-    <Appbar />
-    <PlayerBar />
-    <NavRail />
+{#if isOverlayWindow}
+    {@render children()}
+{:else}
+    <mdui-layout full-height>
+        <Appbar />
+        <PlayerBar />
+        <NavRail />
     <mdui-layout-main
         class="flex flex-col h-screen w-screen overflow-hidden bg-(--controlWhite) text-(--controlBlack)"
     >
         {@render children()}
     </mdui-layout-main>
-</mdui-layout>
+    </mdui-layout>
 
-<QueueDrawer />
+    <QueueDrawer />
 
-{#if activeNativeView}
-    <div
-        class="fixed bottom-24 right-4 z-50 w-[420px] h-96 native-view-box"
-    >
-        <PluginNativeViewHost token={activeNativeView.token} pluginId={activeNativeView.pluginId} />
-    </div>
+    {#if activeNativeView}
+        <div
+            class="fixed bottom-24 right-4 z-50 w-[420px] h-96 native-view-box"
+        >
+            <PluginNativeViewHost token={activeNativeView.token} pluginId={activeNativeView.pluginId} />
+        </div>
+    {/if}
 {/if}
 
 <style lang="postcss">

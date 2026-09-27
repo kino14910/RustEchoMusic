@@ -63,3 +63,18 @@ pub trait EqualizerApi: Send + Sync {
     fn set_enabled(&self, enabled: bool) -> PluginResult<()>;
     fn is_enabled(&self) -> PluginResult<bool>;
 }
+
+pub trait DesktopWindowApi: Send + Sync {
+    fn open(
+        &self,
+        route: &str,
+        width: f64,
+        height: f64,
+        x: Option<f64>,
+        y: Option<f64>,
+    ) -> PluginResult<()>;
+    fn close(&self) -> PluginResult<()>;
+    fn is_open(&self) -> PluginResult<bool>;
+    fn set_bounds(&self, x: f64, y: f64, width: f64, height: f64) -> PluginResult<()>;
+    fn set_always_on_top(&self, on_top: bool) -> PluginResult<()>;
+}

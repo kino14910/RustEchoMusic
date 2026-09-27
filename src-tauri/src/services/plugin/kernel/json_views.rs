@@ -2,15 +2,17 @@ use std::sync::Arc;
 
 use plugin_runtime::JsonService;
 use plugin_sdk::{
-    capabilities, EqualizerApi, LibraryApi as LibraryContract, PlayerControlApi, PlayerStateApi,
-    PluginError, PluginResult, QueueApi as QueueContract, RecentReadApi as RecentReadContract,
-    RecentWriteApi as RecentWriteContract, ServiceDescriptor, ServiceId,
+    capabilities, DesktopWindowApi, EqualizerApi, LibraryApi as LibraryContract,
+    PlayerControlApi, PlayerStateApi, PluginError, PluginResult, QueueApi as QueueContract,
+    RecentReadApi as RecentReadContract, RecentWriteApi as RecentWriteContract,
+    ServiceDescriptor, ServiceId,
     SettingsApi as SettingsContract, Version,
 };
 use serde_json::{json, Value};
 
 use super::host_services::{
-    HostAudio, HostLibrary, HostPlayerControl, HostPlayerState, HostQueue, HostRecent, HostSettings,
+    HostAudio, HostDesktopWindow, HostLibrary, HostPlayerControl, HostPlayerState, HostQueue,
+    HostRecent, HostSettings,
 };
 
 const HOST_SERVICE_VERSION: (u32, u32, u32) = (1, 0, 0);
@@ -229,6 +231,49 @@ impl JsonService for RecentWriteJson {
     }
 }
 
+pub struct DesktopWindowJson(pub Arc<HostDesktopWindow>);
+
+impl JsonService for DesktopWindowJson {
+    fn descriptor(&self) -> ServiceDescriptor {
+        ServiceDescriptor::new(plugin_sdk::services::desktop_window(), version())
+            .requiring(capabilities::desktop_window())
+            .with_summary("桌面悬浮窗：open / close / isOpen / setBounds / setAlwaysOnTop")
+    }
+
+    fn call(&self, method: &str, args: &Value) -> PluginResult<Value> {
+        match method {
+            "open" => {
+                let route = want_str(args, "route")?;
+                let width = want_f64(args, "width")?;
+                let height = want_f64(args, "height")?;
+                let x = args.get("x").and_then(Value::as_f64);
+                let y = args.get("y").and_then(Value::as_f64);
+                self.0
+                    .open(&route, width, height, x, y)
+                    .map(|()| Value::Null)
+            }
+            "close" => self.0.close().map(|()| Value::Null),
+            "isOpen" => Ok(json!(self.0.is_open()?)),
+            "setBounds" => {
+                let x = want_f64(args, "x")?;
+                let y = want_f64(args, "y")?;
+                let width = want_f64(args, "width")?;
+                let height = want_f64(args, "height")?;
+                self.0
+                    .set_bounds(x, y, width, height)
+                    .map(|()| Value::Null)
+            }
+            "setAlwaysOnTop" => {
+                let on_top = want_bool(args, "onTop")?;
+                self.0.set_always_on_top(on_top).map(|()| Value::Null)
+            }
+            other => Err(PluginError::not_found(format!(
+                "desktop.window has no method '{other}'"
+            ))),
+        }
+    }
+}
+
 pub fn documented_services() -> Vec<(ServiceId, Vec<&'static str>)> {
     vec![
         (
@@ -262,6 +307,10 @@ pub fn documented_services() -> Vec<(ServiceId, Vec<&'static str>)> {
         (
             plugin_sdk::services::equalizer(),
             vec!["setBandGain", "applyPreset", "getBands", "setEnabled", "isEnabled"],
+        ),
+        (
+            plugin_sdk::services::desktop_window(),
+            vec!["open", "close", "isOpen", "setBounds", "setAlwaysOnTop"],
         ),
     ]
 }

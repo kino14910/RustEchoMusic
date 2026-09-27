@@ -55,6 +55,7 @@ impl PluginTier {
 pub struct DependencySpec {
     pub plugin: PluginId,
     pub min_version: Option<Version>,
+    #[serde(default)]
     pub optional: bool,
 }
 
@@ -76,7 +77,7 @@ impl DependencySpec {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct ActivationSpec {
     pub eager: bool,
     pub events: Vec<EventType>,
@@ -132,7 +133,7 @@ impl IntegritySpec {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct ResourceBudget {
     pub call_timeout_ms: u64,
     pub max_consecutive_failures: u32,

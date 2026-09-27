@@ -336,13 +336,12 @@ pub async fn execute_plugin_command(
     command_id: String,
     args: CommandArgs,
     runtime: State<'_, Arc<PluginRuntime>>,
-) -> Result<(), AppError> {
+) -> Result<Value, AppError> {
     let cid = CommandId::new(&command_id)
         .map_err(|e| AppError::Plugin(e.to_string()))?;
     let value = command_args_to_value(&args);
     runtime
         .inner()
         .execute(&cid, value)
-        .map_err(|e| AppError::Plugin(e.to_string()))?;
-    Ok(())
+        .map_err(|e| AppError::Plugin(e.to_string()))
 }
